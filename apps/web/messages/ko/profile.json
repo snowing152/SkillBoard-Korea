@@ -38,8 +38,7 @@
     },
     "visaType": {
       "label": "비자 종류 (본인 신고)",
-      "none": "비공개",
-      "disclaimer": "비자 규정 내에서 일할 책임은 본인에게 있습니다. 하이코리아 공식 안내를 확인해 주세요."
+      "none": "비공개"
     },
     "videoUrl": {
       "label": "영상 링크 (유튜브 등)",
@@ -78,14 +77,14 @@
     "cancel": "취소",
     "errors": {
       "duplicate": "항목이 서로 달라야 합니다."
-    }
+    },
+    "acknowledgeVisaDisclaimer": "비자 규정 범위 안에서 일할 책임이 본인에게 있음을 이해합니다."
   },
   "view": {
     "skills": "기술",
     "languages": "언어",
     "portfolio": "포트폴리오",
     "video": "영상 보기",
-    "visaNote": "비자 종류는 본인 신고이며 확인되지 않았습니다.",
     "publishedAt": "{date, date, medium} 게시"
   },
   "list": {

@@ -2,6 +2,7 @@ import type { routing } from '@/i18n/routing';
 import type auth from '../messages/en/auth.json';
 import type common from '../messages/en/common.json';
 import type home from '../messages/en/home.json';
+import type legal from '../messages/en/legal.json';
 import type profile from '../messages/en/profile.json';
 import type reference from '../messages/en/reference.json';
 
@@ -15,6 +16,7 @@ declare module 'next-intl' {
       auth: typeof auth;
       profile: typeof profile;
       reference: typeof reference;
+      legal: typeof legal;
     };
   }
 }

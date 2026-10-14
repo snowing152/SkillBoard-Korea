@@ -24,4 +24,20 @@ describe('i18n wiring', () => {
       }
     }
   });
+
+  it('has the same number of sections and paragraphs per legal document in every locale', async () => {
+    type Doc = { sections: { paragraphs: string[] }[] };
+    type Legal = Record<'privacy' | 'terms' | 'visa', Doc>;
+    const shape = (legal: Legal) =>
+      (['privacy', 'terms', 'visa'] as const).map((key) =>
+        legal[key].sections.map((section) => section.paragraphs.length),
+      );
+    const load = async (locale: string) =>
+      ((await import(`../../messages/${locale}/legal.json`)) as { default: Legal }).default;
+
+    const en = shape(await load('en'));
+    for (const locale of LOCALES) {
+      expect(shape(await load(locale)), `${locale}/legal.json`).toEqual(en);
+    }
+  });
 });

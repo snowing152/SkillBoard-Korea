@@ -1,0 +1,169 @@
+{
+  "privacy": {
+    "title": "Privacy policy",
+    "updatedLabel": "Last updated {date, date, long}",
+    "sections": [
+      {
+        "heading": "What we collect",
+        "paragraphs": [
+          "We collect your email address, your display name and, for talents, the profile text you write: headline, description, city, work mode, languages, skills, portfolio links and an optional video link.",
+          "Talents may also enter a self-declared visa type and contact channels (email, Telegram, KakaoTalk and similar). We do not verify the visa type.",
+          "We keep logs of who revealed which contact details and of reports about profiles, and a record of the legal documents you accepted with the version, the interface language and the time.",
+          "Your IP address is used only in the rate limiter's memory to slow down abuse and is not stored in the database."
+        ]
+      },
+      {
+        "heading": "Why we use it",
+        "paragraphs": [
+          "We use your data to run your account, show talent profiles to clients, let signed-in clients contact talents, keep the service safe and prove which documents you accepted.",
+          "We do not sell your data and we do not use it for advertising or analytics."
+        ]
+      },
+      {
+        "heading": "How long we keep it",
+        "paragraphs": [
+          "Your data is kept until you delete your account, plus a grace period of 14 days in which you can cancel the deletion. After that the data is removed and audit records are anonymised.",
+          "If an account was hidden by moderation, we keep a salted hash of the email, the reason code and the date for 1 year to prevent re-registration under the same email."
+        ]
+      },
+      {
+        "heading": "Where your data is stored",
+        "paragraphs": [
+          "The main database is stored in Korea (Supabase, Seoul region).",
+          "Some processors run outside Korea: Vercel (website hosting), Render in Singapore (API hosting), Resend (email delivery), Google (sign-in with Google) and Cloudflare R2 (file storage). They receive only the data they need to perform their task."
+        ]
+      },
+      {
+        "heading": "Who sees your contact details",
+        "paragraphs": [
+          "Contact details of a talent are shown only to signed-in clients with a verified email who press the Contact button. Every reveal is logged.",
+          "Public pages never show contact details."
+        ]
+      },
+      {
+        "heading": "Your rights",
+        "paragraphs": [
+          "You can view and edit your data, and delete your account, at My account (/me/account). You can cancel a deletion within 14 days.",
+          "You may also ask us to explain how your data is handled by writing to the contact below."
+        ]
+      },
+      {
+        "heading": "Cookies",
+        "paragraphs": [
+          "We use two httpOnly session cookies that keep you signed in, and one language preference cookie (NEXT_LOCALE) set by the interface language switcher.",
+          "We do not use tracking or advertising cookies."
+        ]
+      },
+      {
+        "heading": "Contact",
+        "paragraphs": ["For privacy questions write to {email}."]
+      }
+    ]
+  },
+  "terms": {
+    "title": "Terms of use",
+    "updatedLabel": "Last updated {date, date, long}",
+    "sections": [
+      {
+        "heading": "What this service is",
+        "paragraphs": [
+          "SkillBoard Korea is a listing board where foreigners in South Korea post their skills and clients, companies or private persons, find and contact them.",
+          "We are not an employer, an agency or a party to any agreement between a talent and a client."
+        ]
+      },
+      {
+        "heading": "Accounts",
+        "paragraphs": [
+          "You must give accurate information and keep your password safe. You are responsible for what happens under your account.",
+          "We do not verify the identity, the visa or the qualifications of users. Check the person you work with before you agree on anything."
+        ]
+      },
+      {
+        "heading": "Content rules",
+        "paragraphs": [
+          "Do not post anything illegal, misleading, discriminatory, sexually explicit or infringing someone else's rights.",
+          "Do not use the service to spam, scam, collect other people's data or ask for payment before work is agreed."
+        ]
+      },
+      {
+        "heading": "Moderation",
+        "paragraphs": [
+          "We may hide a profile, delete content or block an account that breaks these terms or that other users report.",
+          "A blocked person may not register again with the same email."
+        ]
+      },
+      {
+        "heading": "Liability",
+        "paragraphs": [
+          "The service is provided as it is, without guarantees of availability, results or the behaviour of other users.",
+          "To the extent allowed by law, we are not liable for losses from agreements between users."
+        ]
+      },
+      {
+        "heading": "Governing law",
+        "paragraphs": ["These terms are governed by the law of the Republic of Korea."]
+      },
+      {
+        "heading": "Changes",
+        "paragraphs": [
+          "When these terms change, the version date above changes and you are asked to accept the new version the next time you sign in."
+        ]
+      }
+    ]
+  },
+  "visa": {
+    "title": "Visa disclaimer",
+    "updatedLabel": "Last updated {date, date, long}",
+    "sections": [
+      {
+        "heading": "Your responsibility",
+        "paragraphs": [
+          "Each person is solely responsible for working only within the rules of their own visa and residence status.",
+          "A profile on this site does not mean that the person is allowed to do a particular kind of work."
+        ]
+      },
+      {
+        "heading": "What the site does not do",
+        "paragraphs": [
+          "We do not check, confirm or store proof of anyone's visa status. The visa type on a profile is self-declared and may be wrong.",
+          "We do not give legal or immigration advice."
+        ]
+      },
+      {
+        "heading": "Official information",
+        "paragraphs": [
+          "For the rules of your visa, use the official HiKorea website of the Korean immigration service or ask the immigration office."
+        ]
+      },
+      {
+        "heading": "For clients",
+        "paragraphs": [
+          "Before you hire someone, ask them whether their visa allows the work you need. You are responsible for your own hiring decision."
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "label": "Legal",
+    "privacy": "Privacy policy",
+    "terms": "Terms of use",
+    "visa": "Visa disclaimer"
+  },
+  "disclaimer": {
+    "short": "Visa type is self-declared and not verified. Everyone is responsible for working within their visa.",
+    "link": "Read the visa disclaimer",
+    "hikorea": "Open HiKorea (official site)"
+  },
+  "consent": {
+    "title": "Please accept the documents",
+    "intro": "Before you continue, please read and accept the documents below.",
+    "accept": "I have read and accept the <doc>{name}</doc>",
+    "version": "Version {date, date, long}",
+    "submit": "Accept and continue"
+  },
+  "list": {
+    "title": "Documents you accepted",
+    "empty": "You have not accepted any documents yet.",
+    "locale": "Language"
+  }
+}
