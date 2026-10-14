@@ -22,6 +22,19 @@ describe('safeNextPath', () => {
     expect(safeNextPath('javascript:alert(1)', FALLBACK)).toBe(FALLBACK);
   });
 
+  it('rejects the exact open-redirect payloads against evil.com', () => {
+    for (const payload of [
+      '//evil.com',
+      '/\\evil.com',
+      'https://evil.com',
+      'javascript:alert(1)',
+      ' //evil.com',
+      '/\t/evil.com', // browsers strip tabs, which would turn this into //evil.com
+    ]) {
+      expect(safeNextPath(payload, FALLBACK), payload).toBe(FALLBACK);
+    }
+  });
+
   it('rejects control characters and very long values', () => {
     expect(safeNextPath('/a\nb', FALLBACK)).toBe(FALLBACK);
     expect(safeNextPath(`/${'a'.repeat(200)}`, FALLBACK)).toBe(FALLBACK);
