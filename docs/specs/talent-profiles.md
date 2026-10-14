@@ -122,7 +122,8 @@ Tests: `packages/shared/src/talent-profiles/*.test.ts`, `packages/shared/src/aut
 - Google sign-in, email verification, refresh tokens, password reset, consent recording, sign-up page:
   `docs/specs/accounts.md` (Phase E). Register exists only so the flow and tests can create users.
 - Photo upload (`photoUrl` stays null): a `profile-photo` spec with `StoragePort` (ADR 0013).
-- Search filters and ranking: `search` spec extends `TalentProfileQuerySchema` and `listPublic`.
+- Search filters and ranking: `search` spec moves `GET /v1/talents` and `listPublic` into a `search`
+  module (`SearchService`, ADR 0016) and extends the query schema with filters.
 - Contact reveal: `contact-reveal` spec adds `POST /v1/talents/:slug/contact-reveals`, reading
   `ContactMethod` through the service and logging `ContactReveal`.
 - Admin hide/unhide and reports: `moderation` spec (`/v1/admin/...`, `@Roles('ADMIN')`).
