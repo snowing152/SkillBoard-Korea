@@ -2,7 +2,8 @@
 
 Reverse job marketplace for foreigners in South Korea: talent post themselves, clients find them.
 Architecture and decisions: [`docs/architecture.md`](docs/architecture.md), [`docs/decisions/`](docs/decisions/).
-Agent rules arrive in Phase C (`CLAUDE.md`, `AGENTS.md`).
+Agent rules: [`AGENTS.md`](AGENTS.md) (any coding agent) and [`CLAUDE.md`](CLAUDE.md) (Claude Code: hooks, skills and
+subagents live in `.claude/`).
 
 ## Run it
 
@@ -20,7 +21,7 @@ pnpm dev                # api http://localhost:3001/v1  docs http://localhost:30
 pnpm check              # typecheck + lint + unit tests + prettier, whole monorepo (what CI runs)
 pnpm test:e2e           # API e2e (needs Docker) + Playwright in phone and desktop viewports
 pnpm api-client:generate# regenerate apps/api/openapi.json and packages/api-client after an API change
-pnpm db:reset           # drop, migrate, seed the local database
+pnpm db:reset           # drop, migrate, seed the local database (humans only; Prisma refuses AI agents)
 ```
 
 ## Layout

@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm check)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm test)",
+      "Bash(pnpm test *)",
+      "Bash(pnpm test:e2e)",
+      "Bash(pnpm build)",
+      "Bash(pnpm format)",
+      "Bash(pnpm api-client:generate)",
+      "Bash(pnpm db:up)",
+      "Bash(pnpm db:down)",
+      "Bash(pnpm install)",
+      "Bash(pnpm install --frozen-lockfile)",
+      "Bash(pnpm --filter * typecheck)",
+      "Bash(pnpm --filter * lint)",
+      "Bash(pnpm --filter * test)",
+      "Bash(pnpm --filter * test *)",
+      "Bash(pnpm --filter * build)",
+      "Bash(pnpm --filter * test:e2e)",
+      "Bash(pnpm --filter * test:e2e *)",
+      "Bash(pnpm --filter @skillboard/api db:generate)",
+      "Bash(pnpm --filter @skillboard/api db:migrate --name *)",
+      "Bash(pnpm --filter @skillboard/api db:seed)",
+      "Bash(pnpm --filter @skillboard/api openapi:generate)",
+      "Bash(pnpm exec prettier *)",
+      "Bash(pnpm exec eslint *)",
+      "Bash(pnpm exec tsc *)",
+      "Bash(pnpm exec vitest *)",
+      "Bash(pnpm exec jest *)",
+      "Bash(pnpm exec playwright test *)",
+      "Bash(pnpm why *)",
+      "Bash(pnpm ls *)",
+      "Bash(pnpm --version)",
+      "Bash(node --version)",
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git log)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git blame *)",
+      "Bash(git branch)",
+      "Bash(git branch --show-current)",
+      "Bash(git branch --list *)",
+      "Bash(git ls-files *)",
+      "Bash(git stash list)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git switch *)",
+      "Bash(git checkout -b *)",
+      "Bash(git fetch)",
+      "Bash(git fetch *)",
+      "Bash(git pull --ff-only *)",
+      "Bash(docker compose ps)",
+      "Bash(docker compose logs *)",
+      "Bash(curl http://localhost*)",
+      "Bash(curl -s http://localhost*)",
+      "Bash(curl -i http://localhost*)",
+      "WebFetch(domain:code.claude.com)",
+      "WebFetch(domain:nextjs.org)",
+      "WebFetch(domain:next-intl.dev)",
+      "WebFetch(domain:docs.nestjs.com)",
+      "WebFetch(domain:www.prisma.io)",
+      "WebFetch(domain:zod.dev)",
+      "WebFetch(domain:ui.shadcn.com)",
+      "WebFetch(domain:tailwindcss.com)",
+      "WebFetch(domain:playwright.dev)",
+      "WebFetch(domain:pnpm.io)",
+      "WebFetch(domain:turborepo.com)",
+      "WebFetch(domain:github.com)"
+    ],
+    "ask": [
+      "Bash(git push)",
+      "Bash(git push *)",
+      "Bash(pnpm add *)",
+      "Bash(pnpm remove *)",
+      "Bash(pnpm up *)",
+      "Bash(pnpm update *)",
+      "Bash(pnpm dlx *)",
+      "Bash(npx *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr merge *)",
+      "Bash(gh issue create *)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(!.env.example)",
+      "Edit(.env)",
+      "Edit(.env.*)",
+      "Edit(!.env.example)",
+      "Edit(apps/api/src/generated/**)",
+      "Edit(pnpm-lock.yaml)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.config/gh/**)",
+      "Bash(pnpm db:reset)",
+      "Bash(pnpm * db:reset)",
+      "Bash(* migrate reset)",
+      "Bash(* migrate reset *)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git push * --force)",
+      "Bash(git push * --force *)",
+      "Bash(git push * -f)",
+      "Bash(sudo *)",
+      "Bash(vercel *)",
+      "Bash(npm publish)",
+      "Bash(npm publish *)",
+      "Bash(pnpm publish)",
+      "Bash(pnpm publish *)",
+      "Bash(wrangler *)",
+      "Bash(neonctl *)",
+      "Bash(gh release *)",
+      "Bash(gh repo delete *)",
+      "Bash(docker compose down -v)",
+      "Bash(docker compose down * -v)",
+      "Bash(docker compose down --volumes)",
+      "Bash(docker volume rm *)",
+      "Bash(docker system prune *)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start.js"],
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-bash.js"],
+            "onFailure": "block",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-edit.js"],
+            "onFailure": "block",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/format-lint.js"],
+            "timeout": 120,
+            "statusMessage": "Prettier + ESLint on the edited file"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-check.js"],
+            "timeout": 600,
+            "statusMessage": "pnpm check on changed packages"
+          }
+        ]
+      }
+    ]
+  }
+}
