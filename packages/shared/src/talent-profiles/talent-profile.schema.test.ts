@@ -18,6 +18,7 @@ const valid = {
   languages: [{ languageCode: 'ru', level: 'NATIVE' }],
   portfolioLinks: [{ url: 'https://example.com/portfolio', label: null }],
   contactMethods: [{ type: 'TELEGRAM', value: '@anna' }],
+  acknowledgeVisaDisclaimer: true,
 };
 
 describe('CreateTalentProfileSchema', () => {
@@ -66,6 +67,14 @@ describe('CreateTalentProfileSchema', () => {
     ).toBe(false);
   });
 
+  it('requires the visa disclaimer to be acknowledged', () => {
+    const { acknowledgeVisaDisclaimer: _flag, ...without } = valid;
+    expect(CreateTalentProfileSchema.safeParse(without).success).toBe(false);
+    expect(
+      CreateTalentProfileSchema.safeParse({ ...valid, acknowledgeVisaDisclaimer: false }).success,
+    ).toBe(false);
+  });
+
   it('allows one value per contact type', () => {
     expect(
       CreateTalentProfileSchema.safeParse({
@@ -85,6 +94,10 @@ describe('UpdateTalentProfileSchema', () => {
       status: 'PUBLISHED',
     });
     expect(UpdateTalentProfileSchema.safeParse({ status: 'HIDDEN' }).success).toBe(false);
+  });
+
+  it('never asks for the disclaimer again on edits', () => {
+    expect('acknowledgeVisaDisclaimer' in UpdateTalentProfileSchema.shape).toBe(false);
   });
 });
 

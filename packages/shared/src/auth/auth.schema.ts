@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { LocaleSchema } from '../i18n/locales.js';
+import { LegalDocumentSchema } from '../legal/legal.schema.js';
 import { SIGNUP_ROLES, USER_ROLES } from './roles.js';
 
 export const UserRoleSchema = z.enum(USER_ROLES);
@@ -33,6 +34,9 @@ export const AuthUserSchema = z.object({
   displayName: z.string(),
   roles: z.array(UserRoleSchema),
   locale: LocaleSchema,
+  pendingConsents: z
+    .array(LegalDocumentSchema)
+    .meta({ description: 'Documents to accept at their current version before using the account' }),
 });
 export type AuthUser = z.infer<typeof AuthUserSchema>;
 
