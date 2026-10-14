@@ -13,6 +13,11 @@ Shared rules for every coding agent (project, commands, golden rules, layout, wo
 - **Path rules** in `.claude/rules/*.md` load only when you touch matching files (Prisma, messages,
   tests, docs, tooling, `.claude`).
 - **Skills**: `/spec <slug>`, `/implement <slug>`, `/new-module <name>`, `/add-language <locale>`, `/review`.
+  Pass the bare slug (`/implement legal`); a full path (`docs/specs/legal.md`) is also accepted and
+  normalised to the slug.
+- **CI parity**: after any change to `turbo.json`, `package.json`, workflows or env handling, run
+  `pnpm check:ci` (clean env, `CI=true`, no cache, same env values as the workflow). `pnpm check` alone
+  can pass locally while CI fails.
 - **Subagents** with fixed models: `reviewer` (Sonnet, read-only), `test-writer` (Sonnet),
   `i18n-checker` (Haiku, read-only). Delegate those jobs instead of doing them in the main session.
 - Which model for which task: `docs/ai/model-routing.md`.

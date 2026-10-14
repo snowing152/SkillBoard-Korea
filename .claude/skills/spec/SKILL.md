@@ -1,10 +1,13 @@
 ---
 name: spec
 description: Write a feature spec in docs/specs/ from the template, concrete enough for Sonnet to implement it without asking questions.
-argument-hint: <slug> [one-line goal]
+argument-hint: <slug, e.g. legal> [one-line goal]
 ---
 
 Write `docs/specs/$0.md` for: $ARGUMENTS
+
+`$0` is the spec slug. If you were given a path (`docs/specs/legal.md`), strip the `docs/specs/`
+prefix and the `.md` suffix first; use the bare slug (`legal`) everywhere below.
 
 1. Read `docs/specs/_template.md`, `docs/domain.md`, the conventions section of `docs/architecture.md`,
    and the ADRs the feature touches (0009 auth, 0014 API, 0016 data model, 0017 conventions,
