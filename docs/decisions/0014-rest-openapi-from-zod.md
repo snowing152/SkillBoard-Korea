@@ -3,10 +3,12 @@
 Date: 2026-10-14 · Status: Accepted
 
 ## Context
+
 Web and mobile need a typed client. The contract must come from the shared Zod schemas, not be redeclared
 as Nest DTO classes with decorators (which agents would then let drift).
 
 ## Decision
+
 - REST, JSON, versioned by path prefix `/v1`. Resource-oriented routes: `GET /v1/talents/:slug`,
   `PATCH /v1/me/talent-profile`, `POST /v1/reports`.
 - `nestjs-zod`: DTO classes are one-liners `export class CreateXDto extends createZodDto(CreateXSchema) {}`
@@ -19,6 +21,7 @@ as Nest DTO classes with decorators (which agents would then let drift).
   committed file is stale.
 
 ## Consequences
+
 Three artifacts stay in sync by construction: Zod schema → runtime validation → OpenAPI → client types.
 Agents must never hand-write types for API responses. Nest's `class-validator` is not installed, to remove
 the temptation.

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "// why": "ADR 0001. Every package extends this. Strictness is the cheapest feedback an agent gets.",
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": false,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true
+  }
+}

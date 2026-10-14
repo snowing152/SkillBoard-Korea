@@ -3,10 +3,12 @@
 Date: 2026-10-14 · Status: Accepted
 
 ## Context
+
 Users are in Korea; Korea's PIPA applies. Profiles contain contact details and self-declared visa status
 (sensitive in practice). Budget is zero, so controls must be cheap and built in.
 
 ## Decision
+
 **Transport & input**: HTTPS only (hosts provide it). `helmet` on the API. CORS allowlist from `CORS_ORIGINS`
 env (web URL + `localhost` in dev). All input validated by Zod (ADR 0014); string lengths capped everywhere;
 URLs validated as `http(s)` only. Rate limiting with `@nestjs/throttler`: global 100 req/min per IP, stricter
@@ -17,6 +19,7 @@ on `/auth/*` (10/min) and `POST /contact-reveals` (30/hour per user).
 Access-token secret and refresh-token pepper are separate values.
 
 **Personal data (PIPA, data minimisation)**:
+
 - Collect only what the product needs: email, display name, profile content the user writes. No phone number,
   no passport/ARC number, no real-name verification in MVP. Visa type is optional and self-declared, with the
   disclaimer that users are responsible for working within their visa (link to HiKorea).
@@ -31,5 +34,6 @@ Access-token secret and refresh-token pepper are separate values.
 the public and a banner to the owner.
 
 ## Consequences
+
 A short security checklist goes into the `review` skill (Phase C). Items left for later: 2FA, device list,
 automated abuse scoring, DPIA-style review before adding chat.

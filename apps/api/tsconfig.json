@@ -1,0 +1,13 @@
+{
+  "extends": "@skillboard/config/tsconfig/nest.json",
+  "compilerOptions": { "outDir": "dist" },
+  "include": [
+    "src",
+    "test",
+    "prisma",
+    "prisma.config.ts",
+    "jest.config.cjs",
+    "jest.e2e.config.cjs",
+    "eslint.config.mjs"
+  ]
+}

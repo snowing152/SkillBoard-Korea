@@ -1,0 +1,31 @@
+name: Bug report
+description: Something does not work as specified.
+labels: [bug]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [web, api, shared, api-client, tooling, docs]
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: 1. Go to … 2. Click … 3. See …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: Include the error body (with requestId) or a screenshot. Phone or desktop?
+    validations:
+      required: true

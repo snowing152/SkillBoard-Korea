@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "// tsBuildInfoFile": "Must live inside dist: nest build deletes dist, and a surviving buildinfo makes tsc emit nothing (docs/pitfalls.md).",
+    "tsBuildInfoFile": "dist/tsconfig.build.tsbuildinfo"
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.spec.ts"]
+}

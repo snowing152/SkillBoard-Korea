@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "// why": "Nest compiles to CommonJS and needs legacy decorators + metadata. verbatimModuleSyntax is incompatible with CJS output, so isolatedModules + ESLint consistent-type-imports replace it here (ADR 0001).",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "verbatimModuleSyntax": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "types": ["node", "jest"],
+    "sourceMap": true,
+    "incremental": true,
+    "removeComments": false,
+    "rootDir": "${configDir}",
+    "outDir": "${configDir}/dist"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "// why": "For packages/*. `types: []` + ES lib only: no Node, no DOM. Expo and the browser must be able to import these.",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "types": [],
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "${configDir}/dist"
+  }
+}

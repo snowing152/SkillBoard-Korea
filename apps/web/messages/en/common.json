@@ -1,0 +1,13 @@
+{
+  "tagline": "Talent marketplace for foreigners living in Korea. Post yourself; let people find you.",
+  "language": { "label": "Language", "en": "English", "ko": "한국어", "ru": "Русский" },
+  "notFound": {
+    "title": "Page not found",
+    "body": "The page you are looking for does not exist or was moved.",
+    "home": "Back to home"
+  },
+  "offline": {
+    "title": "You are offline",
+    "body": "Check your connection and try again. Your saved pages will load once you are back online."
+  }
+}

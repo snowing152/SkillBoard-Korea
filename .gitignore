@@ -1,0 +1,21 @@
+node_modules/
+dist/
+.next/
+out/
+coverage/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# env files: never committed (ADR 0018). Only *.example is tracked.
+.env
+.env.*
+!.env.example
+
+# generated
+apps/api/src/generated/
+apps/web/playwright-report/
+apps/web/test-results/
+
+.DS_Store
+*.log

@@ -1,0 +1,12 @@
+// Prisma 7 schema. DATABASE_URL is configured in ../prisma.config.ts (ADR 0005).
+// Models arrive in Phase D from the draft in docs/domain.md.
+
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}

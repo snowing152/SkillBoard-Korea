@@ -1,0 +1,79 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/v1/health": {
+      "get": {
+        "operationId": "HealthController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["health"]
+      }
+    }
+  },
+  "info": {
+    "title": "SkillBoard Korea API",
+    "description": "Generated from Zod schemas in packages/shared. Do not edit by hand.",
+    "version": "v1",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "HealthResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["ok", "degraded"]
+          },
+          "version": {
+            "type": "string"
+          },
+          "uptimeSeconds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "checks": {
+            "type": "object",
+            "properties": {
+              "database": {
+                "type": "string",
+                "enum": ["up", "down"]
+              }
+            },
+            "required": ["database"]
+          }
+        },
+        "required": ["status", "version", "uptimeSeconds", "timestamp", "checks"]
+      }
+    }
+  }
+}

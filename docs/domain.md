@@ -14,22 +14,22 @@ it becomes `apps/api/prisma/schema.prisma` then and this doc keeps only the pros
 
 ## Entities
 
-| Entity | Purpose | Notes |
-|---|---|---|
-| `User` | identity, login, UI locale, roles | `passwordHash` is null for Google-only users |
-| `AuthIdentity` | links a User to an external provider (`GOOGLE`, `providerUserId`) | allows adding Apple/Kakao login later |
-| `RefreshToken` | server-side record of issued refresh tokens (hashed) | rotation + revocation, works for web and mobile |
-| `VerificationToken` | one-time tokens: email verification, password reset | hashed, expiring |
-| `Consent` | which legal text (terms, privacy, visa disclaimer) a user accepted, which version, when | PIPA audit trail |
-| `TalentProfile` | the public card: headline, description, photo, city, work mode, visa type, video link, status | one per User, `slug` for public URL |
-| `SkillCategory`, `Skill` | **data, not enums**: categories (Tutoring, Marketing, …) and skills (Russian tutor, SMM, …) with names as JSON `{ en, ko, ru }` | adding "IT" is an insert, not a migration |
-| `TalentSkill` | many-to-many Profile ↔ Skill | ordered |
-| `TalentLanguage` | languages a talent speaks, with level | ISO 639-1 code, labels via `Intl.DisplayNames` |
-| `PortfolioLink` | external links (GitHub, Behance, YouTube) | ordered |
-| `ContactMethod` | the channels a talent chose to share: email, Telegram, KakaoTalk ID | hidden until a viewer clicks "Contact" |
-| `ContactReveal` | log: who revealed whose contacts, when | abuse detection now; pay-per-contact or limits later |
-| `Report` | a user reports a profile with a reason | status open/resolved/dismissed |
-| `ModerationAction` | admin hid/unhid a profile and why | audit |
+| Entity                   | Purpose                                                                                                                         | Notes                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `User`                   | identity, login, UI locale, roles                                                                                               | `passwordHash` is null for Google-only users         |
+| `AuthIdentity`           | links a User to an external provider (`GOOGLE`, `providerUserId`)                                                               | allows adding Apple/Kakao login later                |
+| `RefreshToken`           | server-side record of issued refresh tokens (hashed)                                                                            | rotation + revocation, works for web and mobile      |
+| `VerificationToken`      | one-time tokens: email verification, password reset                                                                             | hashed, expiring                                     |
+| `Consent`                | which legal text (terms, privacy, visa disclaimer) a user accepted, which version, when                                         | PIPA audit trail                                     |
+| `TalentProfile`          | the public card: headline, description, photo, city, work mode, visa type, video link, status                                   | one per User, `slug` for public URL                  |
+| `SkillCategory`, `Skill` | **data, not enums**: categories (Tutoring, Marketing, …) and skills (Russian tutor, SMM, …) with names as JSON `{ en, ko, ru }` | adding "IT" is an insert, not a migration            |
+| `TalentSkill`            | many-to-many Profile ↔ Skill                                                                                                    | ordered                                              |
+| `TalentLanguage`         | languages a talent speaks, with level                                                                                           | ISO 639-1 code, labels via `Intl.DisplayNames`       |
+| `PortfolioLink`          | external links (GitHub, Behance, YouTube)                                                                                       | ordered                                              |
+| `ContactMethod`          | the channels a talent chose to share: email, Telegram, KakaoTalk ID                                                             | hidden until a viewer clicks "Contact"               |
+| `ContactReveal`          | log: who revealed whose contacts, when                                                                                          | abuse detection now; pay-per-contact or limits later |
+| `Report`                 | a user reports a profile with a reason                                                                                          | status open/resolved/dismissed                       |
+| `ModerationAction`       | admin hid/unhid a profile and why                                                                                               | audit                                                |
 
 Reference lists that are **config in `packages/shared`**, not tables: cities (Korean city codes), visa types
 (`F-2`, `F-4`, `F-5`, `F-6`, `E-7`, `D-10`, `D-2`, `H-1`, `OTHER`, `UNDISCLOSED`), languages (ISO 639-1).
@@ -302,8 +302,8 @@ model ModerationAction {
 
 ### Why these choices (for the learning owner)
 
-- **Enums vs tables**: an enum is right when the set is part of the *code's* logic (`ProfileStatus` drives
-  visibility rules). A table is right when the set is *content* that non-developers extend (skills).
+- **Enums vs tables**: an enum is right when the set is part of the _code's_ logic (`ProfileStatus` drives
+  visibility rules). A table is right when the set is _content_ that non-developers extend (skills).
 - **`names Json`** instead of `nameEn/nameKo/nameRu` columns: adding a UI language must not need a migration.
 - **Hashed tokens**: a leaked DB dump must not log anyone in. Store `sha256(token)`, compare hashes.
 - **`ContactReveal`** costs one insert per click and is the single most valuable table for later monetization

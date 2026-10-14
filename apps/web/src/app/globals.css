@@ -1,0 +1,14 @@
+@import 'tailwindcss';
+
+/* Design tokens live here (ADR 0007). Placeholder values; Opus owns this file from Phase D on. */
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #171717;
+  --color-muted: #6b7280;
+  --color-primary: #1d4ed8;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+}

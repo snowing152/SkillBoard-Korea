@@ -1,0 +1,27 @@
+packages:
+  - apps/*
+  - packages/*
+
+# pnpm refuses to run install scripts of dependencies unless decided here (supply-chain safety).
+# true = allowed, false = never run. Add an entry when `pnpm install` reports an ignored build.
+allowBuilds:
+  '@nestjs/core': false
+  '@parcel/watcher': true
+  '@prisma/engines': true
+  '@scarf/scarf': false
+  '@swc/core': true
+  '@tailwindcss/oxide': true
+  esbuild: true
+  prisma: true
+  sharp: true
+  unrs-resolver: true
+
+# pnpm waits before installing brand-new releases; versions pinned below were vetted explicitly.
+minimumReleaseAgeExclude:
+  - '@turbo/darwin-64@2.11.8'
+  - '@turbo/darwin-arm64@2.11.8'
+  - '@turbo/linux-64@2.11.8'
+  - '@turbo/linux-arm64@2.11.8'
+  - '@turbo/windows-64@2.11.8'
+  - '@turbo/windows-arm64@2.11.8'
+  - turbo@2.11.8

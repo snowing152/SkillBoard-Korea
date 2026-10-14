@@ -1,0 +1,76 @@
+# CI (ADR 0012): every PR and push to main must pass the same `pnpm check` agents run locally,
+# plus build, contract freshness, API e2e and Playwright in two viewports.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: postgresql://skillboard:skillboard@localhost:5432/skillboard
+
+jobs:
+  check:
+    name: typecheck · lint · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # version comes from packageManager in package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+      - run: pnpm build
+      - name: OpenAPI and api-client are up to date
+        run: |
+          pnpm api-client:generate
+          git diff --exit-code -- apps/api/openapi.json packages/api-client/src/schema.ts \
+            || (echo "::error::Run 'pnpm api-client:generate' and commit the result." && exit 1)
+
+  e2e:
+    name: API e2e · Playwright (mobile + desktop)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: check
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: skillboard
+          POSTGRES_PASSWORD: skillboard
+          POSTGRES_DB: skillboard
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U skillboard -d skillboard"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Apply migrations
+        run: pnpm --filter @skillboard/api db:deploy
+      - name: API e2e
+        run: pnpm --filter @skillboard/api test:e2e
+      - name: Install Playwright browser
+        run: pnpm --filter @skillboard/web exec playwright install --with-deps chromium
+      - name: Playwright
+        run: pnpm --filter @skillboard/web test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7

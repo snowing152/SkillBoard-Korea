@@ -1,0 +1,32 @@
+{
+  "name": "@skillboard/api-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Typed fetch client for the SkillBoard API. Types are generated from apps/api/openapi.json; never edit src/schema.ts by hand.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "generate": "openapi-typescript ../../apps/api/openapi.json -o src/schema.ts"
+  },
+  "dependencies": {
+    "openapi-fetch": "0.17.0"
+  },
+  "devDependencies": {
+    "@skillboard/config": "workspace:*",
+    "eslint": "10.12.0",
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "skillboard-korea",
+  "private": true,
+  "packageManager": "pnpm@12.11.2",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "check": "turbo run typecheck lint test && prettier --check .",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "format": "prettier --write .",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:reset": "pnpm --filter @skillboard/api db:reset",
+    "api-client:generate": "pnpm --filter @skillboard/api openapi:generate && pnpm --filter @skillboard/api-client generate && prettier --write apps/api/openapi.json packages/api-client/src/schema.ts"
+  },
+  "devDependencies": {
+    "prettier": "3.9.10",
+    "prettier-plugin-tailwindcss": "0.8.1",
+    "turbo": "2.11.8"
+  }
+}
