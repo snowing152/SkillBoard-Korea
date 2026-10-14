@@ -6,6 +6,7 @@ import { firstCallArg } from '../../../test/helpers.js';
 import { ApiError } from '../../common/errors/api-error.js';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
+import { ConsentsService } from '../consents/consents.service.js';
 import { AuthService } from './auth.service.js';
 
 const USER_ID = '019a0000-0000-7000-8000-000000000001';
@@ -13,16 +14,19 @@ const TTL = 900;
 
 describe('AuthService', () => {
   const prisma = { user: { create: jest.fn(), findUnique: jest.fn() } };
+  const consents = { pendingFor: jest.fn() };
   let service: AuthService;
   let jwt: JwtService;
 
   beforeEach(async () => {
+    consents.pendingFor.mockResolvedValue([]);
     const moduleRef = await Test.createTestingModule({
       imports: [JwtModule.register({ secret: 'x'.repeat(32), signOptions: { expiresIn: TTL } })],
       providers: [
         AuthService,
         { provide: PrismaService, useValue: prisma },
         { provide: ConfigService, useValue: { get: () => TTL } },
+        { provide: ConsentsService, useValue: consents },
       ],
     }).compile();
     service = moduleRef.get(AuthService);
@@ -77,6 +81,14 @@ describe('AuthService', () => {
     });
   });
 
+  it('puts the documents still to accept into the session user', async () => {
+    consents.pendingFor.mockResolvedValue(['PRIVACY']);
+    prisma.user.create.mockResolvedValue(row);
+    const session = await service.register({ ...input, role: 'CLIENT' });
+    expect(session.user.pendingConsents).toEqual(['PRIVACY']);
+    expect(consents.pendingFor).toHaveBeenCalledWith(USER_ID);
+  });
+
   it('login returns a session for the right password', async () => {
     const { argon2id, hash } = await import('argon2');
     prisma.user.findUnique.mockResolvedValue({
@@ -84,7 +96,7 @@ describe('AuthService', () => {
       passwordHash: await hash(input.password, { type: argon2id }),
     });
     const session = await service.login({ email: input.email, password: input.password });
-    expect(session.user).toEqual(row);
+    expect(session.user).toEqual({ ...row, pendingConsents: [] });
     expect(session.expiresInSeconds).toBe(TTL);
   });
 });
