@@ -2,8 +2,10 @@ import { randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import {
   CityCodeSchema,
+  DEFAULT_LOCALE,
   type CreateTalentProfile,
   LanguageCodeSchema,
+  LocaleSchema,
   LocalizedNamesSchema,
   type MyTalentProfile,
   type Paginated,
@@ -18,6 +20,7 @@ import { ApiError } from '../../common/errors/api-error.js';
 import { decodeCursor, encodeCursor } from '../../common/pagination/cursor.js';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
+import { ConsentsService } from '../consents/consents.service.js';
 
 /**
  * One `select` for every read, so the mappers below always get the same row shape and a new column
@@ -59,7 +62,10 @@ const SLUG_ATTEMPTS = 5;
 
 @Injectable()
 export class TalentProfilesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly consents: ConsentsService,
+  ) {}
 
   /** Public list, newest first. The search spec adds filters and ranking on top of this query. */
   async listPublic(query: TalentProfileQuery): Promise<Paginated<TalentCard>> {
@@ -101,7 +107,12 @@ export class TalentProfilesService {
   async createMine(userId: string, input: CreateTalentProfile): Promise<MyTalentProfile> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { displayName: true, roles: true, talentProfile: { select: { id: true } } },
+      select: {
+        displayName: true,
+        roles: true,
+        locale: true,
+        talentProfile: { select: { id: true } },
+      },
     });
     if (!user) throw new ApiError('UNAUTHENTICATED', 'Account no longer exists');
     if (user.talentProfile) throw new ApiError('CONFLICT', 'Profile already exists; use PATCH');
@@ -119,6 +130,14 @@ export class TalentProfilesService {
           if (!user.roles.includes('TALENT')) {
             await tx.user.update({ where: { id: userId }, data: { roles: { push: 'TALENT' } } });
           }
+          // The acknowledged disclaimer is stored as a Consent row in the same transaction; the flag
+          // itself is not a column (legal spec). Language = the user's language setting.
+          await this.consents.record(
+            userId,
+            ['VISA_DISCLAIMER'],
+            LocaleSchema.catch(DEFAULT_LOCALE).parse(user.locale),
+            tx,
+          );
           return tx.talentProfile.create({
             data: {
               userId,

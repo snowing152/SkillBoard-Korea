@@ -1,12 +1,18 @@
 {
   "tagline": "한국에 사는 외국인을 위한 인재 마켓플레이스. 나를 소개하고, 나를 찾게 하세요.",
-  "language": { "label": "언어", "en": "English", "ko": "한국어", "ru": "Русский" },
+  "language": {
+    "label": "언어",
+    "en": "English",
+    "ko": "한국어",
+    "ru": "Русский"
+  },
   "nav": {
     "home": "홈",
     "talents": "인재 둘러보기",
     "signIn": "로그인",
     "signOut": "로그아웃",
-    "myProfile": "내 프로필"
+    "myProfile": "내 프로필",
+    "myAccount": "내 계정"
   },
   "loading": "불러오는 중…",
   "errors": {

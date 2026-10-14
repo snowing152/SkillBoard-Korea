@@ -4,6 +4,7 @@ import { firstCallArg } from '../../../test/helpers.js';
 import { encodeCursor } from '../../common/pagination/cursor.js';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
+import { ConsentsService } from '../consents/consents.service.js';
 import { TalentProfilesService } from './talent-profiles.service.js';
 
 const USER_ID = '019a0000-0000-7000-8000-000300000101';
@@ -49,6 +50,7 @@ const input = {
   languages: [{ languageCode: 'ru' as const, level: 'NATIVE' as const }],
   portfolioLinks: [],
   contactMethods: [{ type: 'TELEGRAM' as const, value: '@anna' }],
+  acknowledgeVisaDisclaimer: true as const,
 };
 
 describe('TalentProfilesService', () => {
@@ -69,12 +71,17 @@ describe('TalentProfilesService', () => {
     contactMethod: { deleteMany: jest.fn() },
     $transaction: jest.fn(),
   };
+  const consents = { record: jest.fn() };
   let service: TalentProfilesService;
 
   beforeEach(async () => {
     prisma.$transaction.mockImplementation((fn: (tx: typeof prisma) => unknown) => fn(prisma));
     const moduleRef = await Test.createTestingModule({
-      providers: [TalentProfilesService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        TalentProfilesService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: ConsentsService, useValue: consents },
+      ],
     }).compile();
     service = moduleRef.get(TalentProfilesService);
   });
@@ -161,6 +168,33 @@ describe('TalentProfilesService', () => {
       });
       expect(MyTalentProfileSchema.safeParse(profile).success).toBe(true);
       expect(profile.contactMethods[0]?.value).toBe('@anna');
+    });
+
+    it('records the visa disclaimer in the profile transaction, in the user language', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        displayName: 'Anna Petrova',
+        roles: ['TALENT'],
+        locale: 'ru',
+        talentProfile: null,
+      });
+      prisma.skill.count.mockResolvedValue(1);
+      prisma.talentProfile.create.mockResolvedValue(row());
+
+      await service.createMine(USER_ID, input);
+
+      // The mock object doubles as `tx`, so passing `prisma` proves the transaction client was used.
+      expect(consents.record).toHaveBeenCalledWith(USER_ID, ['VISA_DISCLAIMER'], 'ru', prisma);
+      // The flag is a request-only field, never a column.
+      expect(firstCallArg(prisma.talentProfile.create)).not.toHaveProperty(
+        'data.acknowledgeVisaDisclaimer',
+      );
+    });
+
+    it('writes no Consent on update', async () => {
+      prisma.talentProfile.findUnique.mockResolvedValue({ id: PROFILE_ID, publishedAt: null });
+      prisma.talentProfile.update.mockResolvedValue(row());
+      await service.updateMine(USER_ID, { headline: 'New headline here' });
+      expect(consents.record).not.toHaveBeenCalled();
     });
 
     it('retries with a suffixed slug when the unique index rejects the first one', async () => {

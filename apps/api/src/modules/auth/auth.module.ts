@@ -3,10 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import type { Env } from '../../common/config/env.js';
 import { AuthController } from './auth.controller.js';
+import { ConsentsModule } from '../consents/consents.module.js';
 import { AuthService } from './auth.service.js';
 
 @Module({
   imports: [
+    ConsentsModule,
     // Global so JwtAuthGuard (registered in app.module.ts) can inject JwtService from the root.
     JwtModule.registerAsync({
       global: true,

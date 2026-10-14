@@ -11,3 +11,5 @@ export * from './skills/skill.schema.js';
 export * from './talent-profiles/talent-profiles.js';
 export * from './talent-profiles/slug.js';
 export * from './talent-profiles/talent-profile.schema.js';
+export * from './legal/legal.js';
+export * from './legal/legal.schema.js';

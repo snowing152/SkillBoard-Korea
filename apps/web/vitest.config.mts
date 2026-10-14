@@ -8,5 +8,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
+    // next-intl imports `next/server` without an extension; Vite must bundle it to resolve that.
+    server: { deps: { inline: ['next-intl'] } },
   },
 });

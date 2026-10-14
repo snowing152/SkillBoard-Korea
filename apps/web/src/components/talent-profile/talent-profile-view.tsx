@@ -1,5 +1,6 @@
 import { localizedName, type TalentProfile } from '@skillboard/shared';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { VisaDisclaimer } from '@/components/legal/visa-disclaimer';
 import { Badge } from '@/components/ui/badge';
 
 /**
@@ -23,12 +24,10 @@ export async function TalentProfileView({ profile }: { profile: TalentProfile })
           )}
           <Badge variant="secondary">{tRef(`workModes.${profile.workMode}`)}</Badge>
           {profile.visaType && (
-            <Badge variant="outline" title={t('visaNote')}>
-              {tRef(`visaTypes.${profile.visaType}`)}
-            </Badge>
+            <Badge variant="outline">{tRef(`visaTypes.${profile.visaType}`)}</Badge>
           )}
         </div>
-        {profile.visaType && <p className="text-xs text-muted-foreground">{t('visaNote')}</p>}
+        {profile.visaType && <VisaDisclaimer />}
       </header>
 
       <p className="leading-relaxed whitespace-pre-line">{profile.description}</p>

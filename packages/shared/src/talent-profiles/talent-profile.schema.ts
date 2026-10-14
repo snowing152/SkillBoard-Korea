@@ -77,13 +77,23 @@ export const CreateTalentProfileSchema = z.object({
     .array(ContactMethodInputSchema)
     .max(L.contactMethodsMax)
     .refine((items) => unique(items, (c) => c.type)),
+  acknowledgeVisaDisclaimer: z.literal(true).meta({
+    description: 'Must be true: the user is responsible for working within their visa (legal spec)',
+  }),
 });
 export type CreateTalentProfile = z.infer<typeof CreateTalentProfileSchema>;
 
-/** PATCH /v1/me/talent-profile: any subset of the create fields, plus publishing. */
-export const UpdateTalentProfileSchema = CreateTalentProfileSchema.partial().extend({
-  status: ProfileStatusSchema.optional(),
-});
+/**
+ * PATCH /v1/me/talent-profile: any subset of the create fields, plus publishing. The disclaimer flag
+ * is create-only: edits never re-ask, and the Consent row is the record.
+ */
+export const UpdateTalentProfileSchema = CreateTalentProfileSchema.omit({
+  acknowledgeVisaDisclaimer: true,
+})
+  .partial()
+  .extend({
+    status: ProfileStatusSchema.optional(),
+  });
 export type UpdateTalentProfile = z.infer<typeof UpdateTalentProfileSchema>;
 
 export const PortfolioLinkSchema = PortfolioLinkInputSchema.extend({ id: z.uuid() });

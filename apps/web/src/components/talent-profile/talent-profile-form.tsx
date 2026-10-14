@@ -16,8 +16,9 @@ import {
 } from '@skillboard/shared';
 import { useLocale, useTranslations } from 'next-intl';
 import { useMemo, useState, useTransition } from 'react';
-import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import { Controller, type Resolver, useFieldArray, useForm } from 'react-hook-form';
 import { saveTalentProfile } from '@/actions/talent-profile';
+import { VisaDisclaimer } from '@/components/legal/visa-disclaimer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -29,14 +30,22 @@ import { Link, useRouter } from '@/i18n/navigation';
 import { type ActionFailure, errorMessageKey } from '@/lib/api-errors';
 import { cn } from '@/lib/utils';
 
+/**
+ * What the form holds while the user types. The schema wants `acknowledgeVisaDisclaimer: true`, but an
+ * unticked box is `false`, so the form value is a boolean and the resolver rejects `false`.
+ */
+export type TalentProfileFormValues = Omit<CreateTalentProfile, 'acknowledgeVisaDisclaimer'> & {
+  acknowledgeVisaDisclaimer: boolean;
+};
+
 type Props = {
   mode: 'create' | 'edit';
   catalog: SkillCatalog;
-  defaultValues: CreateTalentProfile;
+  defaultValues: TalentProfileFormValues;
 };
 
 /** Empty values for a new profile; also what the create page passes in. */
-export const EMPTY_TALENT_PROFILE: CreateTalentProfile = {
+export const EMPTY_TALENT_PROFILE: TalentProfileFormValues = {
   headline: '',
   description: '',
   cityCode: null,
@@ -47,6 +56,7 @@ export const EMPTY_TALENT_PROFILE: CreateTalentProfile = {
   languages: [{ languageCode: 'en', level: 'FLUENT' }],
   portfolioLinks: [],
   contactMethods: [],
+  acknowledgeVisaDisclaimer: false,
 };
 
 /** `<select>` and `<input>` give '' for "nothing"; the schema wants null. */
@@ -74,8 +84,13 @@ export function TalentProfileForm({ mode, catalog, defaultValues }: Props) {
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<CreateTalentProfile>({
-    resolver: zodResolver(CreateTalentProfileSchema),
+  } = useForm<TalentProfileFormValues, unknown, CreateTalentProfile>({
+    // Same schema the API validates. The cast only widens the flag from `true` to boolean (see above).
+    resolver: zodResolver(CreateTalentProfileSchema) as unknown as Resolver<
+      TalentProfileFormValues,
+      unknown,
+      CreateTalentProfile
+    >,
     defaultValues,
   });
   const languages = useFieldArray({ control, name: 'languages' });
@@ -142,12 +157,7 @@ export function TalentProfileForm({ mode, catalog, defaultValues }: Props) {
         </NativeSelect>
       </FieldBlock>
 
-      <FieldBlock
-        label={t('visaType.label')}
-        hint={t('visaType.disclaimer')}
-        error={errors.visaType?.message}
-        htmlFor="visaType"
-      >
+      <FieldBlock label={t('visaType.label')} error={errors.visaType?.message} htmlFor="visaType">
         <NativeSelect id="visaType" {...register('visaType', { setValueAs: emptyToNull })}>
           <option value="">{t('visaType.none')}</option>
           {VISA_TYPES.map((code) => (
@@ -156,7 +166,30 @@ export function TalentProfileForm({ mode, catalog, defaultValues }: Props) {
             </option>
           ))}
         </NativeSelect>
+        <VisaDisclaimer />
       </FieldBlock>
+
+      {mode === 'create' && (
+        <div className="flex flex-col gap-2">
+          <Controller
+            name="acknowledgeVisaDisclaimer"
+            control={control}
+            render={({ field }) => (
+              <label className="flex min-h-11 items-start gap-3">
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={(next) => {
+                    field.onChange(next);
+                  }}
+                  className="mt-1"
+                />
+                <span>{t('acknowledgeVisaDisclaimer')}</span>
+              </label>
+            )}
+          />
+          <FieldMessage error={errors.acknowledgeVisaDisclaimer?.message} />
+        </div>
+      )}
 
       <FieldBlock
         label={t('videoUrl.label')}

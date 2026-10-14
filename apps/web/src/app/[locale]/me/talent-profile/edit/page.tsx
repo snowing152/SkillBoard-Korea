@@ -1,9 +1,9 @@
-import type { CreateTalentProfile } from '@skillboard/shared';
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import {
   EMPTY_TALENT_PROFILE,
   TalentProfileForm,
+  type TalentProfileFormValues,
 } from '@/components/talent-profile/talent-profile-form';
 import { api, apiAsUser } from '@/lib/api';
 import { toActionFailure } from '@/lib/api-errors';
@@ -28,7 +28,7 @@ export default async function EditTalentProfilePage() {
   if (!catalog.data) throw new Error(`API ${toActionFailure(catalog.error).code} loading skills`);
 
   let mode: 'create' | 'edit' = 'edit';
-  let defaultValues: CreateTalentProfile = EMPTY_TALENT_PROFILE;
+  let defaultValues: TalentProfileFormValues = EMPTY_TALENT_PROFILE;
   if (profile.data) {
     defaultValues = toFormValues(profile.data);
   } else {

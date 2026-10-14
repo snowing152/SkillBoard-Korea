@@ -3,7 +3,9 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import {
   AuthSessionSchema,
+  ConsentListSchema,
   ErrorResponseSchema,
+  LEGAL_VERSIONS,
   MyTalentProfileSchema,
   SkillCatalogSchema,
   TalentCardListSchema,
@@ -30,6 +32,7 @@ const body = (skillId: string) => ({
   languages: [{ languageCode: 'ru', level: 'NATIVE' }],
   portfolioLinks: [{ url: 'https://example.com', label: 'Site' }],
   contactMethods: [{ type: 'TELEGRAM', value: '@e2e' }],
+  acknowledgeVisaDisclaimer: true,
 });
 
 describe('talent profiles (e2e)', () => {
@@ -88,6 +91,23 @@ describe('talent profiles (e2e)', () => {
     const profile = MyTalentProfileSchema.parse(res.body);
     expect(profile.status).toBe('DRAFT');
     expect(profile.contactMethods).toHaveLength(1);
+
+    // The acknowledged disclaimer is recorded as a consent at the current version.
+    const consents = ConsentListSchema.parse(
+      (
+        await request(server)
+          .get('/v1/me/consents')
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200)
+      ).body,
+    );
+    expect(consents.items).toContainEqual(
+      expect.objectContaining({
+        type: 'VISA_DISCLAIMER',
+        version: LEGAL_VERSIONS.VISA_DISCLAIMER,
+        locale: 'en',
+      }),
+    );
     slug = profile.slug;
   });
 

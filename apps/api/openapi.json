@@ -91,6 +91,62 @@
         "tags": ["auth"]
       }
     },
+    "/v1/me/consents": {
+      "get": {
+        "operationId": "ConsentsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["consents"]
+      },
+      "post": {
+        "operationId": "ConsentsController_accept",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptConsentsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["consents"]
+      }
+    },
     "/v1/skills": {
       "get": {
         "operationId": "SkillsController_catalog",
@@ -390,9 +446,17 @@
               "locale": {
                 "type": "string",
                 "enum": ["en", "ko", "ru"]
+              },
+              "pendingConsents": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["TERMS", "PRIVACY", "VISA_DISCLAIMER"]
+                },
+                "description": "Documents to accept at their current version before using the account"
               }
             },
-            "required": ["id", "email", "displayName", "roles", "locale"]
+            "required": ["id", "email", "displayName", "roles", "locale", "pendingConsents"]
           }
         },
         "required": ["accessToken", "expiresInSeconds", "user"]
@@ -410,6 +474,65 @@
           }
         },
         "required": ["email", "password"]
+      },
+      "ConsentListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["TERMS", "PRIVACY", "VISA_DISCLAIMER"]
+                },
+                "version": {
+                  "type": "string",
+                  "maxLength": 20
+                },
+                "locale": {
+                  "type": "string",
+                  "enum": ["en", "ko", "ru"],
+                  "description": "UI language the user saw when accepting"
+                },
+                "acceptedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": ["type", "version", "locale", "acceptedAt"]
+            }
+          },
+          "pending": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["TERMS", "PRIVACY", "VISA_DISCLAIMER"]
+            }
+          }
+        },
+        "required": ["items", "pending"]
+      },
+      "AcceptConsentsDto": {
+        "type": "object",
+        "properties": {
+          "documents": {
+            "minItems": 1,
+            "maxItems": 3,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["TERMS", "PRIVACY", "VISA_DISCLAIMER"]
+            }
+          },
+          "locale": {
+            "type": "string",
+            "enum": ["en", "ko", "ru"]
+          }
+        },
+        "required": ["documents", "locale"]
       },
       "SkillCatalogDto": {
         "type": "object",
@@ -1302,6 +1425,11 @@
               },
               "required": ["type", "value"]
             }
+          },
+          "acknowledgeVisaDisclaimer": {
+            "type": "boolean",
+            "description": "Must be true: the user is responsible for working within their visa (legal spec)",
+            "enum": [true]
           }
         },
         "required": [
@@ -1314,7 +1442,8 @@
           "skillIds",
           "languages",
           "portfolioLinks",
-          "contactMethods"
+          "contactMethods",
+          "acknowledgeVisaDisclaimer"
         ]
       },
       "UpdateTalentProfileDto": {

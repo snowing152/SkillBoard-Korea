@@ -38,8 +38,7 @@
     },
     "visaType": {
       "label": "Visa type (self-declared)",
-      "none": "Prefer not to say",
-      "disclaimer": "You are responsible for working within your visa rules. Check the official HiKorea guidance."
+      "none": "Prefer not to say"
     },
     "videoUrl": {
       "label": "Video link (YouTube etc.)",
@@ -78,14 +77,14 @@
     "cancel": "Cancel",
     "errors": {
       "duplicate": "Each entry must be different."
-    }
+    },
+    "acknowledgeVisaDisclaimer": "I understand that I am responsible for working within my visa rules."
   },
   "view": {
     "skills": "Skills",
     "languages": "Languages",
     "portfolio": "Portfolio",
     "video": "Watch video",
-    "visaNote": "Visa type is self-declared and not verified.",
     "publishedAt": "Published {date, date, medium}"
   },
   "list": {

@@ -9,6 +9,7 @@ import { validateEnv } from './common/config/env.js';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import { PrismaModule } from './common/prisma/prisma.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { ConsentsModule } from './modules/consents/consents.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { SkillsModule } from './modules/skills/skills.module.js';
 import { TalentProfilesModule } from './modules/talent-profiles/talent-profiles.module.js';
@@ -21,6 +22,7 @@ import { TalentProfilesModule } from './modules/talent-profiles/talent-profiles.
     PrismaModule,
     HealthModule,
     AuthModule,
+    ConsentsModule,
     SkillsModule,
     TalentProfilesModule,
   ],

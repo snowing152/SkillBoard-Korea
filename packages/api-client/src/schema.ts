@@ -52,6 +52,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/me/consents': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['ConsentsController_list'];
+    put?: never;
+    post: operations['ConsentsController_accept'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/skills': {
     parameters: {
       query?: never;
@@ -152,11 +168,33 @@ export interface components {
         roles: ('TALENT' | 'CLIENT' | 'ADMIN')[];
         /** @enum {string} */
         locale: 'en' | 'ko' | 'ru';
+        /** @description Documents to accept at their current version before using the account */
+        pendingConsents: ('TERMS' | 'PRIVACY' | 'VISA_DISCLAIMER')[];
       };
     };
     LoginDto: {
       email: string;
       password: string;
+    };
+    ConsentListDto: {
+      items: {
+        /** @enum {string} */
+        type: 'TERMS' | 'PRIVACY' | 'VISA_DISCLAIMER';
+        version: string;
+        /**
+         * @description UI language the user saw when accepting
+         * @enum {string}
+         */
+        locale: 'en' | 'ko' | 'ru';
+        /** Format: date-time */
+        acceptedAt: string;
+      }[];
+      pending: ('TERMS' | 'PRIVACY' | 'VISA_DISCLAIMER')[];
+    };
+    AcceptConsentsDto: {
+      documents: ('TERMS' | 'PRIVACY' | 'VISA_DISCLAIMER')[];
+      /** @enum {string} */
+      locale: 'en' | 'ko' | 'ru';
     };
     SkillCatalogDto: {
       categories: {
@@ -621,6 +659,11 @@ export interface components {
         type: 'EMAIL' | 'TELEGRAM' | 'KAKAO';
         value: string;
       }[];
+      /**
+       * @description Must be true: the user is responsible for working within their visa (legal spec)
+       * @enum {boolean}
+       */
+      acknowledgeVisaDisclaimer: true;
     };
     UpdateTalentProfileDto: {
       /** @description One line shown in search results */
@@ -809,6 +852,48 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['AuthSessionDto'];
+        };
+      };
+    };
+  };
+  ConsentsController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ConsentListDto'];
+        };
+      };
+    };
+  };
+  ConsentsController_accept: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AcceptConsentsDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ConsentListDto'];
         };
       };
     };

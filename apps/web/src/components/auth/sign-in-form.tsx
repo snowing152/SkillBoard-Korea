@@ -13,6 +13,8 @@ import { Label } from '@/components/ui/label';
 import { useRouter } from '@/i18n/navigation';
 import { type ActionFailure, errorMessageKey } from '@/lib/api-errors';
 
+const NEXT_AFTER_SIGN_IN = '/me/talent-profile';
+
 /**
  * Pattern for every form: react-hook-form + zodResolver with the shared schema (same rules as the API),
  * submit through a Server Action, show API failures by error code. Field messages come from Zod
@@ -37,8 +39,13 @@ export function SignInForm() {
     setFailure(null);
     startTransition(async () => {
       const result = await signIn(values);
-      if (result.ok) router.push('/me/talent-profile');
-      else setFailure(result);
+      if (result.ok) {
+        router.push(
+          result.data.pendingConsents.length > 0
+            ? `/consent?next=${encodeURIComponent(NEXT_AFTER_SIGN_IN)}`
+            : NEXT_AFTER_SIGN_IN,
+        );
+      } else setFailure(result);
     });
   });
 

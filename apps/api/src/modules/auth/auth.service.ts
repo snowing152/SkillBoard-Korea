@@ -15,6 +15,7 @@ import type { Env } from '../../common/config/env.js';
 import { ApiError } from '../../common/errors/api-error.js';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
+import { ConsentsService } from '../consents/consents.service.js';
 
 /** The columns a session response may contain. `passwordHash` is selected only inside login(). */
 const userSelect = {
@@ -43,6 +44,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService<Env, true>,
+    private readonly consents: ConsentsService,
   ) {}
 
   async register(input: Register): Promise<AuthSession> {
@@ -92,6 +94,8 @@ export class AuthService {
       roles: user.roles,
       // `locale` is a plain column; fall back rather than fail if a row predates a removed locale.
       locale: LocaleSchema.catch(DEFAULT_LOCALE).parse(user.locale),
+      // Documents to accept before the account can be used; the web redirects to /consent (legal spec).
+      pendingConsents: await this.consents.pendingFor(user.id),
     };
     return {
       accessToken: await this.jwt.signAsync(payload),

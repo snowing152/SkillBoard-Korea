@@ -1,12 +1,18 @@
 {
   "tagline": "Talent marketplace for foreigners living in Korea. Post yourself; let people find you.",
-  "language": { "label": "Language", "en": "English", "ko": "한국어", "ru": "Русский" },
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "ko": "한국어",
+    "ru": "Русский"
+  },
   "nav": {
     "home": "Home",
     "talents": "Browse talent",
     "signIn": "Sign in",
     "signOut": "Sign out",
-    "myProfile": "My profile"
+    "myProfile": "My profile",
+    "myAccount": "My account"
   },
   "loading": "Loading…",
   "errors": {
