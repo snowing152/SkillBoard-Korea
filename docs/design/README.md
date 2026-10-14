@@ -19,9 +19,10 @@ this page says where the design surface is and which constraints it has.
 Existing (unstyled, Phase D): home (`/`), offline, not-found, sign-in (`/sign-in`), my profile
 (`/me/talent-profile`: empty, draft, published and hidden states), profile form
 (`/me/talent-profile/edit`), public profile (`/t/[slug]`), talent list (`/talents`), error page.
-Planned per `docs/specs/`: sign-up (role choice, consent), search (`/search` with filters: skill,
-language, city, remote/on-site, visa), contact reveal (sheet on the profile), report profile, admin
-moderation list, legal pages (privacy, terms, visa disclaimer), account deletion.
+Planned per `docs/specs/` (order in `docs/roadmap.md`): sign-up (role choice, consent), verify-email,
+forgot/reset password, account settings, search (`/talents` with filters: skill, language, city,
+remote/on-site, visa; bottom sheet on phones), contact reveal (dialog on the profile), report profile,
+admin inbox and admin profile page, legal pages (privacy, terms, visa disclaimer), account deletion.
 
 ## Constraints
 
