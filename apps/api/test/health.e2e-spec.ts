@@ -7,9 +7,7 @@ import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
 import { setupApp } from '../src/setup-app.js';
 
-// Needs the Docker Postgres from `pnpm db:up` (ADR 0011) or the CI service container.
-process.env.DATABASE_URL ??= 'postgresql://skillboard:skillboard@localhost:5432/skillboard';
-process.env.NODE_ENV ??= 'test';
+// Env defaults (DATABASE_URL, JWT secret) come from test/setup-env.ts via jest.e2e.config.cjs.
 
 describe('GET /v1/health (e2e)', () => {
   let app: INestApplication;

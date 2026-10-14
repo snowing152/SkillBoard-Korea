@@ -19,6 +19,10 @@ export const EnvSchema = z.object({
         .filter(Boolean),
     ),
   WEB_URL: z.url().default('http://localhost:3000'),
+  /** Signs access tokens (ADR 0009). Separate from any future refresh-token pepper (ADR 0018). */
+  JWT_ACCESS_SECRET: z.string().min(32),
+  /** Access-token lifetime. 15 min per ADR 0009; refresh tokens arrive with the accounts spec. */
+  JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().min(60).max(86_400).default(900),
 });
 
 /** Parsed, typed shape. Inject as `ConfigService<Env, true>` and read with `get('KEY', { infer: true })`. */

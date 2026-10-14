@@ -25,6 +25,8 @@ export function buildOpenApiDocument(app: INestApplication): OpenAPIObject {
     .setTitle(`${APP_NAME} API`)
     .setDescription('Generated from Zod schemas in packages/shared. Do not edit by hand.')
     .setVersion(API_PREFIX)
+    // Lets `@ApiBearerAuth()` routes show the lock icon and accept a token in /docs (ADR 0009).
+    .addBearerAuth()
     .build();
   return cleanupOpenApiDoc(SwaggerModule.createDocument(app, config));
 }

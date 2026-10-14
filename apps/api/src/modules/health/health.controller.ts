@@ -4,6 +4,7 @@ import { SkipThrottle } from '@nestjs/throttler';
 import type { HealthResponse } from '@skillboard/shared';
 import type { Response } from 'express';
 import { ZodSerializerDto } from 'nestjs-zod';
+import { Public } from '../../common/auth/decorators.js';
 import { HealthResponseDto } from './dto/health-response.dto.js';
 import { HealthService } from './health.service.js';
 
@@ -14,6 +15,7 @@ export class HealthController {
 
   /** Used by hosting health checks and the uptime pinger (ADR 0013). 503 when the database is down. */
   @Get()
+  @Public()
   @SkipThrottle()
   @ZodSerializerDto(HealthResponseDto)
   @ApiOkResponse({ type: HealthResponseDto })

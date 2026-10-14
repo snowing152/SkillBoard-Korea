@@ -20,6 +20,102 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/auth/register': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['AuthController_register'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/auth/login': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['AuthController_login'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/skills': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['SkillsController_catalog'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/talents': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['TalentProfilesController_list'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/talents/{slug}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['TalentProfilesController_getPublic'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/talent-profile': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['TalentProfilesController_getMine'];
+    put?: never;
+    post: operations['TalentProfilesController_create'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations['TalentProfilesController_update'];
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -35,6 +131,598 @@ export interface components {
         /** @enum {string} */
         database: 'up' | 'down';
       };
+    };
+    RegisterDto: {
+      email: string;
+      password: string;
+      displayName: string;
+      /** @enum {string} */
+      role: 'TALENT' | 'CLIENT';
+    };
+    AuthSessionDto: {
+      /** @description JWT; send as Authorization: Bearer */
+      accessToken: string;
+      expiresInSeconds: number;
+      user: {
+        /** Format: uuid */
+        id: string;
+        /** Format: email */
+        email: string;
+        displayName: string;
+        roles: ('TALENT' | 'CLIENT' | 'ADMIN')[];
+        /** @enum {string} */
+        locale: 'en' | 'ko' | 'ru';
+      };
+    };
+    LoginDto: {
+      email: string;
+      password: string;
+    };
+    SkillCatalogDto: {
+      categories: {
+        /** Format: uuid */
+        id: string;
+        slug: string;
+        names: {
+          en: string;
+        } & {
+          [key: string]: string;
+        };
+        skills: {
+          /** Format: uuid */
+          id: string;
+          slug: string;
+          names: {
+            en: string;
+          } & {
+            [key: string]: string;
+          };
+        }[];
+      }[];
+    };
+    TalentCardListDto: {
+      items: {
+        /** Format: uuid */
+        id: string;
+        slug: string;
+        displayName: string;
+        headline: string;
+        /**
+         * Format: uri
+         * @description http or https URL
+         */
+        photoUrl: string | null;
+        /** @enum {string|null} */
+        cityCode:
+          | 'SEOUL'
+          | 'BUSAN'
+          | 'INCHEON'
+          | 'DAEGU'
+          | 'DAEJEON'
+          | 'GWANGJU'
+          | 'ULSAN'
+          | 'SEJONG'
+          | 'GYEONGGI'
+          | 'GANGWON'
+          | 'CHUNGBUK'
+          | 'CHUNGNAM'
+          | 'JEONBUK'
+          | 'JEONNAM'
+          | 'GYEONGBUK'
+          | 'GYEONGNAM'
+          | 'JEJU'
+          | null;
+        /** @enum {string} */
+        workMode: 'REMOTE' | 'ON_SITE' | 'HYBRID';
+        /** @enum {string|null} */
+        visaType:
+          | 'F-2'
+          | 'F-4'
+          | 'F-5'
+          | 'F-6'
+          | 'E-7'
+          | 'D-10'
+          | 'D-2'
+          | 'H-1'
+          | 'OTHER'
+          | 'UNDISCLOSED'
+          | null;
+        skills: {
+          /** Format: uuid */
+          id: string;
+          slug: string;
+          names: {
+            en: string;
+          } & {
+            [key: string]: string;
+          };
+        }[];
+        languages: {
+          /** @enum {string} */
+          languageCode:
+            | 'en'
+            | 'ko'
+            | 'ru'
+            | 'uz'
+            | 'kk'
+            | 'ky'
+            | 'tg'
+            | 'mn'
+            | 'zh'
+            | 'ja'
+            | 'vi'
+            | 'th'
+            | 'tl'
+            | 'id'
+            | 'ms'
+            | 'my'
+            | 'km'
+            | 'ne'
+            | 'hi'
+            | 'ur'
+            | 'bn'
+            | 'si'
+            | 'ar'
+            | 'fa'
+            | 'tr'
+            | 'uk'
+            | 'de'
+            | 'fr'
+            | 'es'
+            | 'pt'
+            | 'it'
+            | 'pl';
+          /** @enum {string} */
+          level: 'NATIVE' | 'FLUENT' | 'INTERMEDIATE' | 'BASIC';
+        }[];
+      }[];
+      nextCursor: string | null;
+    };
+    TalentProfileDto: {
+      /** Format: uuid */
+      id: string;
+      slug: string;
+      displayName: string;
+      headline: string;
+      /**
+       * Format: uri
+       * @description http or https URL
+       */
+      photoUrl: string | null;
+      /** @enum {string|null} */
+      cityCode:
+        | 'SEOUL'
+        | 'BUSAN'
+        | 'INCHEON'
+        | 'DAEGU'
+        | 'DAEJEON'
+        | 'GWANGJU'
+        | 'ULSAN'
+        | 'SEJONG'
+        | 'GYEONGGI'
+        | 'GANGWON'
+        | 'CHUNGBUK'
+        | 'CHUNGNAM'
+        | 'JEONBUK'
+        | 'JEONNAM'
+        | 'GYEONGBUK'
+        | 'GYEONGNAM'
+        | 'JEJU'
+        | null;
+      /** @enum {string} */
+      workMode: 'REMOTE' | 'ON_SITE' | 'HYBRID';
+      /** @enum {string|null} */
+      visaType:
+        | 'F-2'
+        | 'F-4'
+        | 'F-5'
+        | 'F-6'
+        | 'E-7'
+        | 'D-10'
+        | 'D-2'
+        | 'H-1'
+        | 'OTHER'
+        | 'UNDISCLOSED'
+        | null;
+      skills: {
+        /** Format: uuid */
+        id: string;
+        slug: string;
+        names: {
+          en: string;
+        } & {
+          [key: string]: string;
+        };
+      }[];
+      languages: {
+        /** @enum {string} */
+        languageCode:
+          | 'en'
+          | 'ko'
+          | 'ru'
+          | 'uz'
+          | 'kk'
+          | 'ky'
+          | 'tg'
+          | 'mn'
+          | 'zh'
+          | 'ja'
+          | 'vi'
+          | 'th'
+          | 'tl'
+          | 'id'
+          | 'ms'
+          | 'my'
+          | 'km'
+          | 'ne'
+          | 'hi'
+          | 'ur'
+          | 'bn'
+          | 'si'
+          | 'ar'
+          | 'fa'
+          | 'tr'
+          | 'uk'
+          | 'de'
+          | 'fr'
+          | 'es'
+          | 'pt'
+          | 'it'
+          | 'pl';
+        /** @enum {string} */
+        level: 'NATIVE' | 'FLUENT' | 'INTERMEDIATE' | 'BASIC';
+      }[];
+      description: string;
+      /**
+       * Format: uri
+       * @description http or https URL
+       */
+      videoUrl: string | null;
+      /** Format: date-time */
+      publishedAt: string | null;
+      portfolioLinks: {
+        /**
+         * Format: uri
+         * @description http or https URL
+         */
+        url: string;
+        label: string | null;
+        /** Format: uuid */
+        id: string;
+      }[];
+    };
+    MyTalentProfileDto: {
+      /** Format: uuid */
+      id: string;
+      slug: string;
+      displayName: string;
+      headline: string;
+      /**
+       * Format: uri
+       * @description http or https URL
+       */
+      photoUrl: string | null;
+      /** @enum {string|null} */
+      cityCode:
+        | 'SEOUL'
+        | 'BUSAN'
+        | 'INCHEON'
+        | 'DAEGU'
+        | 'DAEJEON'
+        | 'GWANGJU'
+        | 'ULSAN'
+        | 'SEJONG'
+        | 'GYEONGGI'
+        | 'GANGWON'
+        | 'CHUNGBUK'
+        | 'CHUNGNAM'
+        | 'JEONBUK'
+        | 'JEONNAM'
+        | 'GYEONGBUK'
+        | 'GYEONGNAM'
+        | 'JEJU'
+        | null;
+      /** @enum {string} */
+      workMode: 'REMOTE' | 'ON_SITE' | 'HYBRID';
+      /** @enum {string|null} */
+      visaType:
+        | 'F-2'
+        | 'F-4'
+        | 'F-5'
+        | 'F-6'
+        | 'E-7'
+        | 'D-10'
+        | 'D-2'
+        | 'H-1'
+        | 'OTHER'
+        | 'UNDISCLOSED'
+        | null;
+      skills: {
+        /** Format: uuid */
+        id: string;
+        slug: string;
+        names: {
+          en: string;
+        } & {
+          [key: string]: string;
+        };
+      }[];
+      languages: {
+        /** @enum {string} */
+        languageCode:
+          | 'en'
+          | 'ko'
+          | 'ru'
+          | 'uz'
+          | 'kk'
+          | 'ky'
+          | 'tg'
+          | 'mn'
+          | 'zh'
+          | 'ja'
+          | 'vi'
+          | 'th'
+          | 'tl'
+          | 'id'
+          | 'ms'
+          | 'my'
+          | 'km'
+          | 'ne'
+          | 'hi'
+          | 'ur'
+          | 'bn'
+          | 'si'
+          | 'ar'
+          | 'fa'
+          | 'tr'
+          | 'uk'
+          | 'de'
+          | 'fr'
+          | 'es'
+          | 'pt'
+          | 'it'
+          | 'pl';
+        /** @enum {string} */
+        level: 'NATIVE' | 'FLUENT' | 'INTERMEDIATE' | 'BASIC';
+      }[];
+      description: string;
+      /**
+       * Format: uri
+       * @description http or https URL
+       */
+      videoUrl: string | null;
+      /** Format: date-time */
+      publishedAt: string | null;
+      portfolioLinks: {
+        /**
+         * Format: uri
+         * @description http or https URL
+         */
+        url: string;
+        label: string | null;
+        /** Format: uuid */
+        id: string;
+      }[];
+      /** @enum {string} */
+      status: 'DRAFT' | 'PUBLISHED';
+      /**
+       * Format: date-time
+       * @description Set by an admin; non-null = hidden
+       */
+      hiddenAt: string | null;
+      contactMethods: {
+        /** @enum {string} */
+        type: 'EMAIL' | 'TELEGRAM' | 'KAKAO';
+        value: string;
+        /** Format: uuid */
+        id: string;
+      }[];
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    CreateTalentProfileDto: {
+      /** @description One line shown in search results */
+      headline: string;
+      description: string;
+      /** @enum {string|null} */
+      cityCode:
+        | 'SEOUL'
+        | 'BUSAN'
+        | 'INCHEON'
+        | 'DAEGU'
+        | 'DAEJEON'
+        | 'GWANGJU'
+        | 'ULSAN'
+        | 'SEJONG'
+        | 'GYEONGGI'
+        | 'GANGWON'
+        | 'CHUNGBUK'
+        | 'CHUNGNAM'
+        | 'JEONBUK'
+        | 'JEONNAM'
+        | 'GYEONGBUK'
+        | 'GYEONGNAM'
+        | 'JEJU'
+        | null;
+      /** @enum {string} */
+      workMode: 'REMOTE' | 'ON_SITE' | 'HYBRID';
+      /**
+       * @description Self-declared, not verified
+       * @enum {string|null}
+       */
+      visaType:
+        | 'F-2'
+        | 'F-4'
+        | 'F-5'
+        | 'F-6'
+        | 'E-7'
+        | 'D-10'
+        | 'D-2'
+        | 'H-1'
+        | 'OTHER'
+        | 'UNDISCLOSED'
+        | null;
+      /**
+       * Format: uri
+       * @description External link only (YouTube etc.)
+       */
+      videoUrl: string | null;
+      skillIds: string[];
+      languages: {
+        /** @enum {string} */
+        languageCode:
+          | 'en'
+          | 'ko'
+          | 'ru'
+          | 'uz'
+          | 'kk'
+          | 'ky'
+          | 'tg'
+          | 'mn'
+          | 'zh'
+          | 'ja'
+          | 'vi'
+          | 'th'
+          | 'tl'
+          | 'id'
+          | 'ms'
+          | 'my'
+          | 'km'
+          | 'ne'
+          | 'hi'
+          | 'ur'
+          | 'bn'
+          | 'si'
+          | 'ar'
+          | 'fa'
+          | 'tr'
+          | 'uk'
+          | 'de'
+          | 'fr'
+          | 'es'
+          | 'pt'
+          | 'it'
+          | 'pl';
+        /** @enum {string} */
+        level: 'NATIVE' | 'FLUENT' | 'INTERMEDIATE' | 'BASIC';
+      }[];
+      portfolioLinks: {
+        /**
+         * Format: uri
+         * @description http or https URL
+         */
+        url: string;
+        label: string | null;
+      }[];
+      contactMethods: {
+        /** @enum {string} */
+        type: 'EMAIL' | 'TELEGRAM' | 'KAKAO';
+        value: string;
+      }[];
+    };
+    UpdateTalentProfileDto: {
+      /** @description One line shown in search results */
+      headline?: string;
+      description?: string;
+      /** @enum {string|null} */
+      cityCode?:
+        | 'SEOUL'
+        | 'BUSAN'
+        | 'INCHEON'
+        | 'DAEGU'
+        | 'DAEJEON'
+        | 'GWANGJU'
+        | 'ULSAN'
+        | 'SEJONG'
+        | 'GYEONGGI'
+        | 'GANGWON'
+        | 'CHUNGBUK'
+        | 'CHUNGNAM'
+        | 'JEONBUK'
+        | 'JEONNAM'
+        | 'GYEONGBUK'
+        | 'GYEONGNAM'
+        | 'JEJU'
+        | null;
+      /** @enum {string} */
+      workMode?: 'REMOTE' | 'ON_SITE' | 'HYBRID';
+      /**
+       * @description Self-declared, not verified
+       * @enum {string|null}
+       */
+      visaType?:
+        | 'F-2'
+        | 'F-4'
+        | 'F-5'
+        | 'F-6'
+        | 'E-7'
+        | 'D-10'
+        | 'D-2'
+        | 'H-1'
+        | 'OTHER'
+        | 'UNDISCLOSED'
+        | null;
+      /**
+       * Format: uri
+       * @description External link only (YouTube etc.)
+       */
+      videoUrl?: string | null;
+      skillIds?: string[];
+      languages?: {
+        /** @enum {string} */
+        languageCode:
+          | 'en'
+          | 'ko'
+          | 'ru'
+          | 'uz'
+          | 'kk'
+          | 'ky'
+          | 'tg'
+          | 'mn'
+          | 'zh'
+          | 'ja'
+          | 'vi'
+          | 'th'
+          | 'tl'
+          | 'id'
+          | 'ms'
+          | 'my'
+          | 'km'
+          | 'ne'
+          | 'hi'
+          | 'ur'
+          | 'bn'
+          | 'si'
+          | 'ar'
+          | 'fa'
+          | 'tr'
+          | 'uk'
+          | 'de'
+          | 'fr'
+          | 'es'
+          | 'pt'
+          | 'it'
+          | 'pl';
+        /** @enum {string} */
+        level: 'NATIVE' | 'FLUENT' | 'INTERMEDIATE' | 'BASIC';
+      }[];
+      portfolioLinks?: {
+        /**
+         * Format: uri
+         * @description http or https URL
+         */
+        url: string;
+        label: string | null;
+      }[];
+      contactMethods?: {
+        /** @enum {string} */
+        type: 'EMAIL' | 'TELEGRAM' | 'KAKAO';
+        value: string;
+      }[];
+      /** @enum {string} */
+      status?: 'DRAFT' | 'PUBLISHED';
     };
   };
   responses: never;
@@ -68,6 +756,208 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['HealthResponseDto'];
+        };
+      };
+    };
+  };
+  AuthController_register: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RegisterDto'];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AuthSessionDto'];
+        };
+      };
+      /** @description Email already registered */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AuthController_login: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LoginDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AuthSessionDto'];
+        };
+      };
+    };
+  };
+  SkillsController_catalog: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SkillCatalogDto'];
+        };
+      };
+    };
+  };
+  TalentProfilesController_list: {
+    parameters: {
+      query?: {
+        limit?: number;
+        /** @description Opaque; take it from nextCursor */
+        cursor?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TalentCardListDto'];
+        };
+      };
+    };
+  };
+  TalentProfilesController_getPublic: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slug: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TalentProfileDto'];
+        };
+      };
+      /** @description Missing, draft or hidden */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  TalentProfilesController_getMine: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MyTalentProfileDto'];
+        };
+      };
+      /** @description The user has no profile yet */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  TalentProfilesController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateTalentProfileDto'];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MyTalentProfileDto'];
+        };
+      };
+      /** @description The user already has a profile */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  TalentProfilesController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UpdateTalentProfileDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['MyTalentProfileDto'];
         };
       };
     };

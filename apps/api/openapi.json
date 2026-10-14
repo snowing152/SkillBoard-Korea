@@ -29,6 +29,253 @@
         },
         "tags": ["health"]
       }
+    },
+    "/v1/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSessionDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email already registered"
+          }
+        },
+        "tags": ["auth"]
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSessionDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["auth"]
+      }
+    },
+    "/v1/skills": {
+      "get": {
+        "operationId": "SkillsController_catalog",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillCatalogDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["skills"]
+      }
+    },
+    "/v1/talents": {
+      "get": {
+        "operationId": "TalentProfilesController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Opaque; take it from nextCursor",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 200,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TalentCardListDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["talent-profiles"]
+      }
+    },
+    "/v1/talents/{slug}": {
+      "get": {
+        "operationId": "TalentProfilesController_getPublic",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TalentProfileDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Missing, draft or hidden"
+          }
+        },
+        "tags": ["talent-profiles"]
+      }
+    },
+    "/v1/me/talent-profile": {
+      "get": {
+        "operationId": "TalentProfilesController_getMine",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyTalentProfileDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The user has no profile yet"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["talent-profiles"]
+      },
+      "post": {
+        "operationId": "TalentProfilesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTalentProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyTalentProfileDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The user already has a profile"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["talent-profiles"]
+      },
+      "patch": {
+        "operationId": "TalentProfilesController_update",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTalentProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyTalentProfileDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["talent-profiles"]
+      }
     }
   },
   "info": {
@@ -40,6 +287,13 @@
   "tags": [],
   "servers": [],
   "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
     "schemas": {
       "HealthResponseDto": {
         "type": "object",
@@ -73,6 +327,1170 @@
           }
         },
         "required": ["status", "version", "uptimeSeconds", "timestamp", "checks"]
+      },
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 128
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 50
+          },
+          "role": {
+            "type": "string",
+            "enum": ["TALENT", "CLIENT"]
+          }
+        },
+        "required": ["email", "password", "displayName", "role"]
+      },
+      "AuthSessionDto": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "JWT; send as Authorization: Bearer"
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "exclusiveMinimum": true,
+            "maximum": 9007199254740991,
+            "minimum": 0
+          },
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "email": {
+                "type": "string",
+                "format": "email",
+                "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+              },
+              "displayName": {
+                "type": "string"
+              },
+              "roles": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["TALENT", "CLIENT", "ADMIN"]
+                }
+              },
+              "locale": {
+                "type": "string",
+                "enum": ["en", "ko", "ru"]
+              }
+            },
+            "required": ["id", "email", "displayName", "roles", "locale"]
+          }
+        },
+        "required": ["accessToken", "expiresInSeconds", "user"]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 128
+          }
+        },
+        "required": ["email", "password"]
+      },
+      "SkillCatalogDto": {
+        "type": "object",
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "slug": {
+                  "type": "string",
+                  "maxLength": 60
+                },
+                "names": {
+                  "type": "object",
+                  "properties": {
+                    "en": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    }
+                  },
+                  "required": ["en"],
+                  "additionalProperties": {
+                    "type": "string",
+                    "maxLength": 100
+                  }
+                },
+                "skills": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "slug": {
+                        "type": "string",
+                        "maxLength": 60
+                      },
+                      "names": {
+                        "type": "object",
+                        "properties": {
+                          "en": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                          }
+                        },
+                        "required": ["en"],
+                        "additionalProperties": {
+                          "type": "string",
+                          "maxLength": 100
+                        }
+                      }
+                    },
+                    "required": ["id", "slug", "names"]
+                  }
+                }
+              },
+              "required": ["id", "slug", "names", "skills"]
+            }
+          }
+        },
+        "required": ["categories"]
+      },
+      "TalentCardListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "headline": {
+                  "type": "string"
+                },
+                "photoUrl": {
+                  "type": "string",
+                  "maxLength": 2048,
+                  "format": "uri",
+                  "description": "http or https URL",
+                  "nullable": true
+                },
+                "cityCode": {
+                  "type": "string",
+                  "enum": [
+                    "SEOUL",
+                    "BUSAN",
+                    "INCHEON",
+                    "DAEGU",
+                    "DAEJEON",
+                    "GWANGJU",
+                    "ULSAN",
+                    "SEJONG",
+                    "GYEONGGI",
+                    "GANGWON",
+                    "CHUNGBUK",
+                    "CHUNGNAM",
+                    "JEONBUK",
+                    "JEONNAM",
+                    "GYEONGBUK",
+                    "GYEONGNAM",
+                    "JEJU",
+                    null
+                  ],
+                  "nullable": true
+                },
+                "workMode": {
+                  "type": "string",
+                  "enum": ["REMOTE", "ON_SITE", "HYBRID"]
+                },
+                "visaType": {
+                  "type": "string",
+                  "enum": [
+                    "F-2",
+                    "F-4",
+                    "F-5",
+                    "F-6",
+                    "E-7",
+                    "D-10",
+                    "D-2",
+                    "H-1",
+                    "OTHER",
+                    "UNDISCLOSED",
+                    null
+                  ],
+                  "nullable": true
+                },
+                "skills": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "slug": {
+                        "type": "string",
+                        "maxLength": 60
+                      },
+                      "names": {
+                        "type": "object",
+                        "properties": {
+                          "en": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                          }
+                        },
+                        "required": ["en"],
+                        "additionalProperties": {
+                          "type": "string",
+                          "maxLength": 100
+                        }
+                      }
+                    },
+                    "required": ["id", "slug", "names"]
+                  }
+                },
+                "languages": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "languageCode": {
+                        "type": "string",
+                        "enum": [
+                          "en",
+                          "ko",
+                          "ru",
+                          "uz",
+                          "kk",
+                          "ky",
+                          "tg",
+                          "mn",
+                          "zh",
+                          "ja",
+                          "vi",
+                          "th",
+                          "tl",
+                          "id",
+                          "ms",
+                          "my",
+                          "km",
+                          "ne",
+                          "hi",
+                          "ur",
+                          "bn",
+                          "si",
+                          "ar",
+                          "fa",
+                          "tr",
+                          "uk",
+                          "de",
+                          "fr",
+                          "es",
+                          "pt",
+                          "it",
+                          "pl"
+                        ]
+                      },
+                      "level": {
+                        "type": "string",
+                        "enum": ["NATIVE", "FLUENT", "INTERMEDIATE", "BASIC"]
+                      }
+                    },
+                    "required": ["languageCode", "level"]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "slug",
+                "displayName",
+                "headline",
+                "photoUrl",
+                "cityCode",
+                "workMode",
+                "visaType",
+                "skills",
+                "languages"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "maxLength": 200,
+            "nullable": true
+          }
+        },
+        "required": ["items", "nextCursor"]
+      },
+      "TalentProfileDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "headline": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri",
+            "description": "http or https URL",
+            "nullable": true
+          },
+          "cityCode": {
+            "type": "string",
+            "enum": [
+              "SEOUL",
+              "BUSAN",
+              "INCHEON",
+              "DAEGU",
+              "DAEJEON",
+              "GWANGJU",
+              "ULSAN",
+              "SEJONG",
+              "GYEONGGI",
+              "GANGWON",
+              "CHUNGBUK",
+              "CHUNGNAM",
+              "JEONBUK",
+              "JEONNAM",
+              "GYEONGBUK",
+              "GYEONGNAM",
+              "JEJU",
+              null
+            ],
+            "nullable": true
+          },
+          "workMode": {
+            "type": "string",
+            "enum": ["REMOTE", "ON_SITE", "HYBRID"]
+          },
+          "visaType": {
+            "type": "string",
+            "enum": [
+              "F-2",
+              "F-4",
+              "F-5",
+              "F-6",
+              "E-7",
+              "D-10",
+              "D-2",
+              "H-1",
+              "OTHER",
+              "UNDISCLOSED",
+              null
+            ],
+            "nullable": true
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "slug": {
+                  "type": "string",
+                  "maxLength": 60
+                },
+                "names": {
+                  "type": "object",
+                  "properties": {
+                    "en": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    }
+                  },
+                  "required": ["en"],
+                  "additionalProperties": {
+                    "type": "string",
+                    "maxLength": 100
+                  }
+                }
+              },
+              "required": ["id", "slug", "names"]
+            }
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "languageCode": {
+                  "type": "string",
+                  "enum": [
+                    "en",
+                    "ko",
+                    "ru",
+                    "uz",
+                    "kk",
+                    "ky",
+                    "tg",
+                    "mn",
+                    "zh",
+                    "ja",
+                    "vi",
+                    "th",
+                    "tl",
+                    "id",
+                    "ms",
+                    "my",
+                    "km",
+                    "ne",
+                    "hi",
+                    "ur",
+                    "bn",
+                    "si",
+                    "ar",
+                    "fa",
+                    "tr",
+                    "uk",
+                    "de",
+                    "fr",
+                    "es",
+                    "pt",
+                    "it",
+                    "pl"
+                  ]
+                },
+                "level": {
+                  "type": "string",
+                  "enum": ["NATIVE", "FLUENT", "INTERMEDIATE", "BASIC"]
+                }
+              },
+              "required": ["languageCode", "level"]
+            }
+          },
+          "description": {
+            "type": "string"
+          },
+          "videoUrl": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri",
+            "description": "http or https URL",
+            "nullable": true
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "nullable": true
+          },
+          "portfolioLinks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "maxLength": 2048,
+                  "format": "uri",
+                  "description": "http or https URL"
+                },
+                "label": {
+                  "type": "string",
+                  "maxLength": 60,
+                  "nullable": true
+                },
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                }
+              },
+              "required": ["url", "label", "id"]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "displayName",
+          "headline",
+          "photoUrl",
+          "cityCode",
+          "workMode",
+          "visaType",
+          "skills",
+          "languages",
+          "description",
+          "videoUrl",
+          "publishedAt",
+          "portfolioLinks"
+        ]
+      },
+      "MyTalentProfileDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "headline": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri",
+            "description": "http or https URL",
+            "nullable": true
+          },
+          "cityCode": {
+            "type": "string",
+            "enum": [
+              "SEOUL",
+              "BUSAN",
+              "INCHEON",
+              "DAEGU",
+              "DAEJEON",
+              "GWANGJU",
+              "ULSAN",
+              "SEJONG",
+              "GYEONGGI",
+              "GANGWON",
+              "CHUNGBUK",
+              "CHUNGNAM",
+              "JEONBUK",
+              "JEONNAM",
+              "GYEONGBUK",
+              "GYEONGNAM",
+              "JEJU",
+              null
+            ],
+            "nullable": true
+          },
+          "workMode": {
+            "type": "string",
+            "enum": ["REMOTE", "ON_SITE", "HYBRID"]
+          },
+          "visaType": {
+            "type": "string",
+            "enum": [
+              "F-2",
+              "F-4",
+              "F-5",
+              "F-6",
+              "E-7",
+              "D-10",
+              "D-2",
+              "H-1",
+              "OTHER",
+              "UNDISCLOSED",
+              null
+            ],
+            "nullable": true
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "slug": {
+                  "type": "string",
+                  "maxLength": 60
+                },
+                "names": {
+                  "type": "object",
+                  "properties": {
+                    "en": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    }
+                  },
+                  "required": ["en"],
+                  "additionalProperties": {
+                    "type": "string",
+                    "maxLength": 100
+                  }
+                }
+              },
+              "required": ["id", "slug", "names"]
+            }
+          },
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "languageCode": {
+                  "type": "string",
+                  "enum": [
+                    "en",
+                    "ko",
+                    "ru",
+                    "uz",
+                    "kk",
+                    "ky",
+                    "tg",
+                    "mn",
+                    "zh",
+                    "ja",
+                    "vi",
+                    "th",
+                    "tl",
+                    "id",
+                    "ms",
+                    "my",
+                    "km",
+                    "ne",
+                    "hi",
+                    "ur",
+                    "bn",
+                    "si",
+                    "ar",
+                    "fa",
+                    "tr",
+                    "uk",
+                    "de",
+                    "fr",
+                    "es",
+                    "pt",
+                    "it",
+                    "pl"
+                  ]
+                },
+                "level": {
+                  "type": "string",
+                  "enum": ["NATIVE", "FLUENT", "INTERMEDIATE", "BASIC"]
+                }
+              },
+              "required": ["languageCode", "level"]
+            }
+          },
+          "description": {
+            "type": "string"
+          },
+          "videoUrl": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri",
+            "description": "http or https URL",
+            "nullable": true
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "nullable": true
+          },
+          "portfolioLinks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "maxLength": 2048,
+                  "format": "uri",
+                  "description": "http or https URL"
+                },
+                "label": {
+                  "type": "string",
+                  "maxLength": 60,
+                  "nullable": true
+                },
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                }
+              },
+              "required": ["url", "label", "id"]
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "PUBLISHED"]
+          },
+          "hiddenAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "description": "Set by an admin; non-null = hidden",
+            "nullable": true
+          },
+          "contactMethods": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["EMAIL", "TELEGRAM", "KAKAO"]
+                },
+                "value": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                },
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                }
+              },
+              "required": ["type", "value", "id"]
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "displayName",
+          "headline",
+          "photoUrl",
+          "cityCode",
+          "workMode",
+          "visaType",
+          "skills",
+          "languages",
+          "description",
+          "videoUrl",
+          "publishedAt",
+          "portfolioLinks",
+          "status",
+          "hiddenAt",
+          "contactMethods",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateTalentProfileDto": {
+        "type": "object",
+        "properties": {
+          "headline": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 80,
+            "description": "One line shown in search results"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 2000
+          },
+          "cityCode": {
+            "type": "string",
+            "enum": [
+              "SEOUL",
+              "BUSAN",
+              "INCHEON",
+              "DAEGU",
+              "DAEJEON",
+              "GWANGJU",
+              "ULSAN",
+              "SEJONG",
+              "GYEONGGI",
+              "GANGWON",
+              "CHUNGBUK",
+              "CHUNGNAM",
+              "JEONBUK",
+              "JEONNAM",
+              "GYEONGBUK",
+              "GYEONGNAM",
+              "JEJU",
+              null
+            ],
+            "nullable": true
+          },
+          "workMode": {
+            "type": "string",
+            "enum": ["REMOTE", "ON_SITE", "HYBRID"]
+          },
+          "visaType": {
+            "type": "string",
+            "enum": [
+              "F-2",
+              "F-4",
+              "F-5",
+              "F-6",
+              "E-7",
+              "D-10",
+              "D-2",
+              "H-1",
+              "OTHER",
+              "UNDISCLOSED",
+              null
+            ],
+            "description": "Self-declared, not verified",
+            "nullable": true
+          },
+          "videoUrl": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri",
+            "description": "External link only (YouTube etc.)",
+            "nullable": true
+          },
+          "skillIds": {
+            "minItems": 1,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          "languages": {
+            "minItems": 1,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "languageCode": {
+                  "type": "string",
+                  "enum": [
+                    "en",
+                    "ko",
+                    "ru",
+                    "uz",
+                    "kk",
+                    "ky",
+                    "tg",
+                    "mn",
+                    "zh",
+                    "ja",
+                    "vi",
+                    "th",
+                    "tl",
+                    "id",
+                    "ms",
+                    "my",
+                    "km",
+                    "ne",
+                    "hi",
+                    "ur",
+                    "bn",
+                    "si",
+                    "ar",
+                    "fa",
+                    "tr",
+                    "uk",
+                    "de",
+                    "fr",
+                    "es",
+                    "pt",
+                    "it",
+                    "pl"
+                  ]
+                },
+                "level": {
+                  "type": "string",
+                  "enum": ["NATIVE", "FLUENT", "INTERMEDIATE", "BASIC"]
+                }
+              },
+              "required": ["languageCode", "level"]
+            }
+          },
+          "portfolioLinks": {
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "maxLength": 2048,
+                  "format": "uri",
+                  "description": "http or https URL"
+                },
+                "label": {
+                  "type": "string",
+                  "maxLength": 60,
+                  "nullable": true
+                }
+              },
+              "required": ["url", "label"]
+            }
+          },
+          "contactMethods": {
+            "maxItems": 3,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["EMAIL", "TELEGRAM", "KAKAO"]
+                },
+                "value": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                }
+              },
+              "required": ["type", "value"]
+            }
+          }
+        },
+        "required": [
+          "headline",
+          "description",
+          "cityCode",
+          "workMode",
+          "visaType",
+          "videoUrl",
+          "skillIds",
+          "languages",
+          "portfolioLinks",
+          "contactMethods"
+        ]
+      },
+      "UpdateTalentProfileDto": {
+        "type": "object",
+        "properties": {
+          "headline": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 80,
+            "description": "One line shown in search results"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 2000
+          },
+          "cityCode": {
+            "type": "string",
+            "enum": [
+              "SEOUL",
+              "BUSAN",
+              "INCHEON",
+              "DAEGU",
+              "DAEJEON",
+              "GWANGJU",
+              "ULSAN",
+              "SEJONG",
+              "GYEONGGI",
+              "GANGWON",
+              "CHUNGBUK",
+              "CHUNGNAM",
+              "JEONBUK",
+              "JEONNAM",
+              "GYEONGBUK",
+              "GYEONGNAM",
+              "JEJU",
+              null
+            ],
+            "nullable": true
+          },
+          "workMode": {
+            "type": "string",
+            "enum": ["REMOTE", "ON_SITE", "HYBRID"]
+          },
+          "visaType": {
+            "type": "string",
+            "enum": [
+              "F-2",
+              "F-4",
+              "F-5",
+              "F-6",
+              "E-7",
+              "D-10",
+              "D-2",
+              "H-1",
+              "OTHER",
+              "UNDISCLOSED",
+              null
+            ],
+            "description": "Self-declared, not verified",
+            "nullable": true
+          },
+          "videoUrl": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri",
+            "description": "External link only (YouTube etc.)",
+            "nullable": true
+          },
+          "skillIds": {
+            "minItems": 1,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          "languages": {
+            "minItems": 1,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "languageCode": {
+                  "type": "string",
+                  "enum": [
+                    "en",
+                    "ko",
+                    "ru",
+                    "uz",
+                    "kk",
+                    "ky",
+                    "tg",
+                    "mn",
+                    "zh",
+                    "ja",
+                    "vi",
+                    "th",
+                    "tl",
+                    "id",
+                    "ms",
+                    "my",
+                    "km",
+                    "ne",
+                    "hi",
+                    "ur",
+                    "bn",
+                    "si",
+                    "ar",
+                    "fa",
+                    "tr",
+                    "uk",
+                    "de",
+                    "fr",
+                    "es",
+                    "pt",
+                    "it",
+                    "pl"
+                  ]
+                },
+                "level": {
+                  "type": "string",
+                  "enum": ["NATIVE", "FLUENT", "INTERMEDIATE", "BASIC"]
+                }
+              },
+              "required": ["languageCode", "level"]
+            }
+          },
+          "portfolioLinks": {
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "maxLength": 2048,
+                  "format": "uri",
+                  "description": "http or https URL"
+                },
+                "label": {
+                  "type": "string",
+                  "maxLength": 60,
+                  "nullable": true
+                }
+              },
+              "required": ["url", "label"]
+            }
+          },
+          "contactMethods": {
+            "maxItems": 3,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["EMAIL", "TELEGRAM", "KAKAO"]
+                },
+                "value": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                }
+              },
+              "required": ["type", "value"]
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": ["DRAFT", "PUBLISHED"]
+          }
+        }
       }
     }
   }

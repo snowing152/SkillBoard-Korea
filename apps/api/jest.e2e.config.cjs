@@ -12,5 +12,6 @@ module.exports = {
     '^@skillboard/shared$': '<rootDir>/../../packages/shared/src/index.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
+  setupFiles: ['<rootDir>/test/setup-env.ts'],
   testTimeout: 20000,
 };
