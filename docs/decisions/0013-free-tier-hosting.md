@@ -1,6 +1,6 @@
 # 0013. Hosting: free tiers only (Vercel, Neon, Render, Resend)
 
-Date: 2026-10-14 · Status: Accepted
+Date: 2026-10-14 · Status: Accepted (DB row superseded by 0021: Supabase Seoul instead of Neon Singapore)
 
 ## Context
 

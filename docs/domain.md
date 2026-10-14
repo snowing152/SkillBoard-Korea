@@ -16,11 +16,12 @@ Plain-words description of the entities. The schema itself is `apps/api/prisma/s
 
 | Entity                   | Purpose                                                                                                                         | Notes                                                |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `User`                   | identity, login, UI locale, roles                                                                                               | `passwordHash` is null for Google-only users         |
+| `User`                   | identity, login, UI locale, roles, `emailVerifiedAt`, `deletionRequestedAt` (soft delete, ADR 0022)                             | `passwordHash` is null for Google-only users         |
 | `AuthIdentity`           | links a User to an external provider (`GOOGLE`, `providerUserId`)                                                               | allows adding Apple/Kakao login later                |
 | `RefreshToken`           | server-side record of issued refresh tokens (hashed)                                                                            | rotation + revocation, works for web and mobile      |
 | `VerificationToken`      | one-time tokens: email verification, password reset, OAuth code exchange (ADR 0020)                                             | hashed, expiring                                     |
-| `Consent`                | which legal text (terms, privacy, visa disclaimer) a user accepted, which version, when                                         | PIPA audit trail                                     |
+| `Consent`                | which legal text (terms, privacy, visa disclaimer) a user accepted, which version, in which UI locale, when                     | PIPA audit trail; a new version forces re-acceptance |
+| `BlockedEmail`           | salted hash of the email of a purged account that was hidden by moderation, reason code, dates (ADR 0022)                       | blocks re-registration for 1 year; no user reference |
 | `TalentProfile`          | the public card: headline, description, photo, city, work mode, visa type, video link, status                                   | one per User, `slug` for public URL                  |
 | `SkillCategory`, `Skill` | **data, not enums**: categories (Tutoring, Marketing, …) and skills (Russian tutor, SMM, …) with names as JSON `{ en, ko, ru }` | adding "IT" is an insert, not a migration            |
 | `TalentSkill`            | many-to-many Profile ↔ Skill                                                                                                    | ordered                                              |
@@ -58,14 +59,20 @@ erDiagram
 
 ## Visibility rules (the only business rules that matter in MVP)
 
-A profile is **publicly visible** iff `status = PUBLISHED` **and** `hiddenAt IS NULL`.
-Owners always see their own profile. Admins see everything. Search only returns publicly visible profiles.
+A profile is **publicly visible** iff `status = PUBLISHED` **and** `hiddenAt IS NULL` **and** its owner
+has `emailVerifiedAt IS NOT NULL` **and** `deletionRequestedAt IS NULL`. The predicate exists once, as
+`PUBLICLY_VISIBLE` in `apps/api/src/common/prisma/visibility.ts` (a Prisma `where` with the `user`
+relation), and every public read uses it. Owners always see their own profile, with a banner saying why
+it is not live (draft, unverified email, hidden). Admins see everything. Search only returns publicly
+visible profiles.
 
 ## Deletion (PIPA)
 
-Account deletion is a **hard delete** of `User` with cascades to everything personal.
-Audit rows (`Report`, `ModerationAction`, `ContactReveal`) keep working through `onDelete: SetNull`
-on the user reference, so moderation history survives without personal data. See ADR 0018.
+Account deletion is a **soft delete with a 14-day grace period** (ADR 0022): `deletionRequestedAt` hides
+the profile and blocks sign-in at once; a daily job then **hard deletes** `User` with cascades to
+everything personal. Audit rows (`Report`, `ModerationAction`, `ContactReveal`) keep working through
+`onDelete: SetNull` on the user reference, so moderation history survives without personal data (ADR
+0018). Purged accounts that were hidden by moderation leave one `BlockedEmail` row for a year.
 
 ## Schema notes
 

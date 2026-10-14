@@ -53,11 +53,19 @@ openReportCount: z.number().int().min(0) })`. The UI derives the badge: `hiddenA
 z.string().nullable(), status: z.enum(REPORT_STATUSES), createdAt: z.iso.datetime(), resolvedAt:
 z.iso.datetime().nullable(), reporter: UserRefSchema.nullable(), profile: AdminReportProfileSchema })`.
 - `ResolveReportSchema = z.object({ status: z.enum(['RESOLVED', 'DISMISSED']) })`.
-- `ModerationReasonSchema = z.object({ reason: z.string().trim().min(3).max(500) })`.
+- `HIDE_REASON_CODES = ['SPAM', 'SCAM', 'INAPPROPRIATE', 'IMPERSONATION', 'VISA_OR_LEGAL', 'OTHER']
+as const` (`moderation.ts`); `HideProfileSchema = z.object({ reasonCode: z.enum(HIDE_REASON_CODES),
+note: z.string().trim().max(200).optional() })`; `UnhideProfileSchema = z.object({ note:
+z.string().trim().max(200).optional() })`. The route table's `ModerationReasonSchema` means these two.
 - `ModerationActionSchema = z.object({ id: z.uuid(), action: z.enum(['HIDE', 'UNHIDE']), reason:
 z.string(), createdAt: z.iso.datetime(), admin: UserRefSchema.nullable() })`.
-- `MyTalentProfileSchema` gains `hiddenReason: z.string().nullable()` so the owner can read it. Admins
-  write reasons knowing the owner reads them (say so in the admin UI hint).
+- `MyTalentProfileSchema` gains `hiddenReasonCode: z.enum(HIDE_REASON_CODES).nullable()` and
+  `hiddenNote: z.string().nullable()` so the owner can read why. Admins write the note knowing the owner
+  reads it (say so in the admin UI hint). The owner never receives the reporter's identity, the report
+  text or the number of reports: none of those fields exist in `MyTalentProfileSchema`, and the unit
+  test on the owner mapper asserts it.
+- `ModerationActionSchema` uses `reasonCode: z.enum(HIDE_REASON_CODES).nullable()` and
+  `note: z.string().nullable()` instead of `reason` (UNHIDE actions have no code).
 - `AdminTalentProfileSchema = MyTalentProfileSchema.extend({ user: UserRefSchema.extend({ emailVerified:
 z.boolean(), createdAt: z.iso.datetime() }), reports: z.array(AdminReportSchema.omit({ profile: true })),
 moderationActions: z.array(ModerationActionSchema) })`. Contact methods are included (admins see
@@ -68,16 +76,20 @@ Service rules:
 - Report: profile must be `PUBLICLY_VISIBLE` (hidden ones are already handled); reporter verified
   (`assertEmailVerified`); reporter is not the owner; no `OPEN` report by this reporter on this profile;
   fewer than 10 reports by this reporter in the last 24 h. Then insert.
-- Hide (transaction): set `hiddenAt = now()`, `hiddenReason = reason`; insert `ModerationAction HIDE`;
-  update every `OPEN` report of the profile to `RESOLVED` with `resolvedById`, `resolvedAt`. Unhide:
-  clear both columns, insert `UNHIDE`; reports untouched. Resolve or dismiss: single report, must be
+- Hide (transaction): set `hiddenAt = now()`, `hiddenReasonCode`, `hiddenNote`; insert
+  `ModerationAction HIDE` with the same code and note; update every `OPEN` report of the profile to
+  `RESOLVED` with `resolvedById`, `resolvedAt`. Unhide: clear the three columns, insert `UNHIDE` with the
+  note; reports untouched. Resolve or dismiss: single report, must be
   `OPEN`.
 - `openReportCount` is a `_count` on the profile's open reports (no stored counter).
 - Logging: ids, action and status only. `details` and `reason` are user text and never logged.
 
 ## Data changes
 
-None structural (`Report`, `ModerationAction`, indexes exist). Seed, so every tab has data: report 1
+Migration `hide_reason_codes`: `TalentProfile.hiddenReason` → `hiddenReasonCode String?` (validated
+against `HIDE_REASON_CODES`, same pattern as `visaType`) plus `hiddenNote String?`;
+`ModerationAction.reason` → `reasonCode String?` plus `note String?`. The seed's hidden talent gets
+`SCAM` and the note "Seed: hidden after a scam report". Seed, so every tab has data: report 1
 stays `OPEN` on published profile 3 (SPAM); report 2 on the hidden profile 20 (SCAM) becomes `RESOLVED`
 by the admin at the time of the seed `HIDE` action; new report 3 `OPEN` on published profile 7
 (INAPPROPRIATE); new report 4 `DISMISSED` on published profile 5 (OTHER, resolved by the admin).
@@ -95,7 +107,7 @@ Namespaces `report` and `admin` (new). Actions in `src/actions/reports.ts` and `
 | `/admin`                      | `app/[locale]/admin/layout.tsx` + redirect to `/admin/reports`   | layout calls `GET /v1/me`; not signed in → sign-in redirect; signed in without `ADMIN` → `notFound()` (the area does not exist for them)                                                                                               |
 | `/admin/reports`              | Server page, `?status=` tabs OPEN / RESOLVED / DISMISSED, cursor | loading, empty per tab ("Inbox zero"), list of report cards                                                                                                                                                                            |
 | `/admin/talent-profiles/[id]` | Server page                                                      | full profile incl. contact methods, status badges, open reports, history list, actions: Hide (dialog with reason textarea) or Unhide (dialog with reason)                                                                              |
-| `/me/talent-profile`          | existing hidden banner                                           | now also shows `hiddenReason` and a line "Edit your profile and contact support to request a review" (`profile.my.hiddenReason`)                                                                                                       |
+| `/me/talent-profile`          | existing hidden banner                                           | shows the localized reason (`profile.my.hiddenReason.<CODE>`), the admin note when present, and "To appeal, write to {email}" with `SUPPORT_EMAIL` (`profile.my.hiddenAppeal`). Nothing about reports or reporters                     |
 
 - Report card (`components/admin/report-card.tsx`): profile display name + headline (link to the admin
   profile page), reason badge, details (clamped to 4 lines, expandable), reporter name or "deleted
@@ -113,7 +125,10 @@ Namespaces `report` and `admin` (new). Actions in `src/actions/reports.ts` and `
   `profile.reasonLabel`, `profile.reasonHint` ("The owner will read this"), `profile.hiddenSince`,
   `profile.history`, `profile.contacts`, `profile.badge.DRAFT`, `profile.badge.PUBLISHED`,
   `profile.badge.HIDDEN` (derived from `hiddenAt`), `action.HIDE`, `action.UNHIDE`, `loadMore`. (`profile`):
-  `my.hiddenReason`, `my.hiddenHelp`.
+  `my.hiddenReason.SPAM`, `my.hiddenReason.SCAM`, `my.hiddenReason.INAPPROPRIATE`,
+  `my.hiddenReason.IMPERSONATION`, `my.hiddenReason.VISA_OR_LEGAL`, `my.hiddenReason.OTHER`,
+  `my.hiddenNote`, `my.hiddenAppeal` (`{email}`). (`admin`) also: `reasonCode.<CODE>` for the six codes,
+  `profile.noteLabel`, `profile.noteHint` ("Optional, max 200 characters, the owner will read it").
 - shadcn: radio-group, textarea, dialog, badge, tabs (add and pin what is missing).
 
 ## Acceptance criteria
@@ -132,12 +147,12 @@ Namespaces `report` and `admin` (new). Actions in `src/actions/reports.ts` and `
    redirect from the page.
 7. Given the seeded admin, when they open `/admin/reports`, then the open seed reports are listed with
    profile, reason and reporter; the RESOLVED tab shows the resolved ones. [e2e]
-8. Given the admin hides a profile with reason "Asked for payment up front", then `hiddenAt` is set, a
+8. Given the admin hides a profile with code `SCAM` and note "Asked for payment up front", then `hiddenAt` is set, a
    `HIDE` action with that reason and the admin id exists, every open report of that profile is
    `RESOLVED` with `resolvedById`, `/t/<slug>` answers 404, and the owner's `/me/talent-profile` shows the
    banner with that reason. [e2e]
-9. Given a hidden profile, when the admin unhides it with a reason, then `hiddenAt` and `hiddenReason`
-   are null, an `UNHIDE` action exists, and the public page renders again.
+9. Given a hidden profile, when the admin unhides it with a note, then `hiddenAt`, `hiddenReasonCode`
+   and `hiddenNote` are null, an `UNHIDE` action exists, and the public page renders again.
 10. Given `PATCH /v1/admin/reports/:id` on a `RESOLVED` report, then 409.
 11. Given a reporter who deleted their account, then the report still appears with "deleted user"
     (seed one such row by deleting a throwaway user in the e2e, or unit-test the mapper with

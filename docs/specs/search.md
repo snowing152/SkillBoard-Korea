@@ -50,9 +50,13 @@ z.string().regex(/^[a-z0-9-]{2,60}$/)`. `SEARCH_FILTER_ORDER = ['category', 'ski
 
 `SearchService` rules (the only code that builds the `where`):
 
-- Always `status = PUBLISHED AND hiddenAt IS NULL`: move the private `PUBLICLY_VISIBLE` constant from
-  `talent-profiles.service.ts` to `common/prisma/visibility.ts` and export it; `talent-profiles`,
-  `search` and the later `contact-reveal` and `moderation` modules import it.
+- Always the visibility predicate of `docs/domain.md`: move the private `PUBLICLY_VISIBLE` constant from
+  `talent-profiles.service.ts` to `common/prisma/visibility.ts`, extend it to
+  `{ status: 'PUBLISHED', hiddenAt: null, user: { emailVerifiedAt: { not: null }, deletionRequestedAt:
+null } }` and export it; `talent-profiles`, `search` and the later `contact-reveal` and `moderation`
+  modules import it. (`deletionRequestedAt` arrives with `account-deletion`; until then the predicate
+  has the first three parts.) The join to `User` is cheap at MVP size; the composite index still covers
+  the profile columns.
 - `category` → `skills: { some: { skill: { category: { slug } } } }`; `skills` → `some` with
   `skill.slug in`; both given → both apply (AND). `languages` → `languages: { some: { languageCode: { in } } }`.
   `cities` → `cityCode in`. `workMode=REMOTE` → `workMode in (REMOTE, HYBRID)`; `ON_SITE` →

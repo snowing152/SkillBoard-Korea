@@ -40,8 +40,9 @@ revealedAt: z.iso.datetime(), reusedExisting: z.boolean() }`.
 Service rules (`ContactRevealsService.reveal(slug, viewer)`), in one transaction:
 
 1. Load the profile by slug with `PUBLICLY_VISIBLE` (`common/prisma/visibility.ts`, from `search`),
-   selecting `id, userId, contactMethods`. Missing, draft or hidden → `NOT_FOUND` for everyone, the
-   owner included (the owner reads their own methods on `/me/talent-profile`).
+   selecting `id, userId, contactMethods`. Missing, draft, hidden, owner unverified or owner pending
+   deletion → `NOT_FOUND` for everyone, the owner included (the owner reads their own methods on
+   `/me/talent-profile`).
 2. Owner of that visible profile → return the methods with `reusedExisting: true`; no `ContactReveal`
    row, no limit check.
 3. Viewer's `emailVerifiedAt` null (one `user.findUnique` on `@CurrentUser().id`) → `FORBIDDEN` with

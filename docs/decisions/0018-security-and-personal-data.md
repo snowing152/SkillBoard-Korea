@@ -1,6 +1,6 @@
 # 0018. Security and personal data (PIPA)
 
-Date: 2026-10-14 · Status: Accepted
+Date: 2026-10-14 · Status: Accepted (deletion bullet amended by 0022: 14-day grace period, blocked-email hash)
 
 ## Context
 

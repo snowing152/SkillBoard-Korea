@@ -17,7 +17,7 @@ flowchart LR
     Client["api-client<br/>typed fetch client<br/>generated from OpenAPI"]
   end
   API["apps/api<br/>Nest.js<br/>Passport auth, Prisma"]
-  DB[("PostgreSQL<br/>Neon free tier")]
+  DB[("PostgreSQL<br/>Supabase free, Seoul (ADR 0021)")]
   Mail["Email provider<br/>(Resend)"]
   Store["Object storage<br/>(Cloudflare R2 / MinIO locally)<br/>profile photos"]
   Google["Google OAuth"]

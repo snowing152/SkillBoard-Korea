@@ -95,8 +95,14 @@ next, nonce }`, 10 min, `JWT_ACCESS_SECRET`; the access guard rejects it because
   `${WEB_URL}/${locale}/auth/callback?code=…&next=…`. Nothing secret is ever in a URL except that
   single-use 60 s code.
 - `login` of an unverified user succeeds (they must be able to reach "resend"); gated actions check
-  `emailVerifiedAt` themselves (`contact-reveal`, `moderation`). Publishing a profile is **not** gated: a
-  cold-start marketplace needs profiles, and moderation covers abuse (owner decision to revisit).
+  `emailVerifiedAt` themselves (`contact-reveal`, `moderation`). A profile can be created, edited and
+  set to `PUBLISHED` without verification, but it is not publicly visible until the owner's email is
+  verified (`PUBLICLY_VISIBLE` in `docs/domain.md`, introduced by `search`; this spec adds the
+  `user.emailVerifiedAt` part if `search` has not shipped yet). Verifying the email makes it live with
+  no further action.
+- Re-consent (`legal`): `AuthUserSchema.pendingConsents` lists documents whose current version the user
+  has not accepted. The sign-in and `/auth/callback` flows redirect to `/consent?next=<target>` when the
+  list is not empty; the `/me/*` layout does the same for sessions that were already open.
 - Mail: `apps/api/src/common/mail/mail.port.ts` (`MailPort.send({ to, subject, text, html })`),
   `resend.adapter.ts` (plain `fetch` to `https://api.resend.com/emails`, no SDK: avoids the ESM pitfall)
   and `console.adapter.ts` (development and test only: prints subject and link; env validation rejects
@@ -120,17 +126,17 @@ for e2e). Deletion: `RefreshToken`, `VerificationToken`, `AuthIdentity` already 
 
 New namespace `account`; `auth` grows. Server Actions in `src/actions/auth.ts` and `src/actions/account.ts`.
 
-| Route                | Kind                                                         | States                                                                                                                                                                                                                                    |
-| -------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/sign-up`           | Server page + Client form `components/auth/sign-up-form.tsx` | role choice (two radio cards: "I offer my skills" / "I am looking for someone"), consent checkbox with links to `/legal/*`, Google button (if enabled), submitting, `CONFLICT` → `auth.errors.emailTaken`, success → `/verify-email/sent` |
-| `/sign-in`           | existing form + "Continue with Google" + "Forgot password?"  | `?next=` (validated with `SafePathSchema`) is honoured after success; default `/me/talent-profile` for TALENT, `/talents` for CLIENT                                                                                                      |
-| `/verify-email/sent` | Server page                                                  | explanation, "Resend" button (action → `verify-email/request`; disabled 60 s after click; `RATE_LIMITED` message)                                                                                                                         |
-| `/verify-email`      | Server page reads `?token`, Client confirm component         | confirming, success (link to sign-in or `/me/talent-profile` when a session exists), `NOT_FOUND` → "link expired, request a new one"                                                                                                      |
-| `/forgot-password`   | Server page + Client form                                    | submitting, always the same success text ("If an account exists, we sent a link")                                                                                                                                                         |
-| `/reset-password`    | Server page reads `?token` + Client form                     | new password twice (client-side equality `refine`), success → `/sign-in`, `NOT_FOUND` → expired                                                                                                                                           |
-| `/auth/callback`     | Route Handler `route.ts`                                     | reads `code` (+ `next`), calls `POST /v1/auth/exchange`, sets both cookies, redirects; `?error=` → `/sign-in?error=<CODE>` which shows `auth.errors.<CODE>`                                                                               |
-| `/me/account`        | Server page, session required; Client forms per section      | sections: profile (display name, language), email (verified badge or "Resend verification"), password (change, or "set a password" via reset email for Google-only users), consents (`legal`), danger zone (`account-deletion`)           |
-| `/me/*` layout       | `app/[locale]/me/layout.tsx`                                 | loads `GET /v1/me`; unverified → `VerifyEmailBanner` with resend action on every `/me/*` page                                                                                                                                             |
+| Route                | Kind                                                         | States                                                                                                                                                                                                                                                                                      |
+| -------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/sign-up`           | Server page + Client form `components/auth/sign-up-form.tsx` | role choice (two radio cards: "I offer my skills" / "I am looking for someone"), consent checkbox with links to `/legal/*`, Google button (if enabled), submitting, `CONFLICT` → `auth.errors.emailTaken`, success → `/verify-email/sent`                                                   |
+| `/sign-in`           | existing form + "Continue with Google" + "Forgot password?"  | `?next=` (validated with `SafePathSchema`) is honoured after success; default `/me/talent-profile` for TALENT, `/talents` for CLIENT                                                                                                                                                        |
+| `/verify-email/sent` | Server page                                                  | explanation, "Resend" button (action → `verify-email/request`; disabled 60 s after click; `RATE_LIMITED` message)                                                                                                                                                                           |
+| `/verify-email`      | Server page reads `?token`, Client confirm component         | confirming, success (link to sign-in or `/me/talent-profile` when a session exists), `NOT_FOUND` → "link expired, request a new one"                                                                                                                                                        |
+| `/forgot-password`   | Server page + Client form                                    | submitting, always the same success text ("If an account exists, we sent a link")                                                                                                                                                                                                           |
+| `/reset-password`    | Server page reads `?token` + Client form                     | new password twice (client-side equality `refine`), success → `/sign-in`, `NOT_FOUND` → expired                                                                                                                                                                                             |
+| `/auth/callback`     | Route Handler `route.ts`                                     | reads `code` (+ `next`), calls `POST /v1/auth/exchange`, sets both cookies, redirects; `?error=` → `/sign-in?error=<CODE>` which shows `auth.errors.<CODE>`                                                                                                                                 |
+| `/me/account`        | Server page, session required; Client forms per section      | sections: profile (display name, language), email (verified badge or "Resend verification"), password (change, or "set a password" via reset email for Google-only users), consents (`legal`), danger zone (`account-deletion`)                                                             |
+| `/me/*` layout       | `app/[locale]/me/layout.tsx`                                 | loads `GET /v1/me`; `pendingConsents` not empty → redirect to `/consent?next=`; unverified → `VerifyEmailBanner` with resend action on every `/me/*` page; on `/me/talent-profile` the banner reads "Verify your email to go live" (`auth.verify.goLive`) when a `PUBLISHED` profile exists |
 
 - Session (`src/lib/session.ts`): `setSession(session: AuthSession)` sets `skillboard_session` (max-age
   `expiresInSeconds`) and `skillboard_refresh` (max-age until `refreshExpiresAt`); `clearSession` clears
@@ -166,7 +172,9 @@ New namespace `account`; `auth` grows. Server Actions in `src/actions/auth.ts` a
    writes `TERMS` and `PRIVACY` consents with `LEGAL_VERSIONS`, sends one verification email and the
    browser lands on `/verify-email/sent`. [e2e]
 2. Given a registered but unverified user, when they sign in, then they reach `/me/talent-profile` and see
-   the verify banner; `GET /v1/me` returns `emailVerified: false`.
+   the verify banner; `GET /v1/me` returns `emailVerified: false`. Given they publish a profile, then
+   `/t/<slug>` is 404 and `GET /v1/talents` omits it until `verify-email/confirm` succeeds, after which
+   both show it with no further request (API e2e). [e2e]
 3. Given a valid verification token, when `POST /v1/auth/verify-email/confirm` is called, then
    `emailVerifiedAt` is set and a second call answers 404; given an expired one, 404 (unit test with a
    frozen clock).
