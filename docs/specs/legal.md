@@ -1,6 +1,6 @@
 # Legal pages and versioned consent
 
-Status: Ready · Model: Sonnet (pages, API), Haiku (ko/ru translation of the drafts) · ADRs: 0008, 0013,
+Status: Implemented · Model: Sonnet (pages, API), Haiku (ko/ru translation of the drafts) · ADRs: 0008, 0013,
 0017, 0018, 0021, 0022 · Branch: `feat/legal` · Order: 1 of 6 (`docs/roadmap.md`); `accounts` and
 `talent-profiles` changes depend on it.
 

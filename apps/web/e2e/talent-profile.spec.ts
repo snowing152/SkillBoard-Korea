@@ -17,6 +17,14 @@ async function registerTalent(request: APIRequestContext): Promise<string> {
     data: { email, password: PASSWORD, displayName: 'E2E Web Talent', role: 'TALENT' },
   });
   expect(res.status()).toBe(201);
+  // Terms and privacy are accepted at sign-up (the `accounts` spec); until then, do it here so the
+  // flow under test is not interrupted by /consent. The visa disclaimer is part of this flow.
+  const { accessToken } = (await res.json()) as { accessToken: string };
+  const accepted = await request.post(`${API_URL}/v1/me/consents`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    data: { documents: ['TERMS', 'PRIVACY'], locale: 'en' },
+  });
+  expect(accepted.status()).toBe(200);
   return email;
 }
 
@@ -40,7 +48,19 @@ test('talent signs in, creates a draft, publishes it and gets a public page', as
   await page
     .getByLabel('About you')
     .fill('Patient tutor with five years of experience teaching children online and at home.');
-  await page.getByRole('checkbox').first().click();
+  await page.getByRole('checkbox', { name: 'Russian tutor' }).click();
+
+  // Visa disclaimer: required on create, so submitting without it shows the field error (criterion 2).
+  await page.getByRole('button', { name: 'Create profile' }).click();
+  await expect(page).toHaveURL(/\/me\/talent-profile\/edit$/);
+  await expect(
+    page.getByRole('alert').filter({ hasText: /expected true|required|invalid/i }),
+  ).toBeVisible();
+  await page
+    .getByRole('checkbox', {
+      name: 'I understand that I am responsible for working within my visa rules.',
+    })
+    .click();
   await page.getByRole('button', { name: 'Create profile' }).click();
 
   await expect(page).toHaveURL(/\/me\/talent-profile$/);
