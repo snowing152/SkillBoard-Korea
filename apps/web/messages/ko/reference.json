@@ -1,0 +1,49 @@
+{
+  "cities": {
+    "SEOUL": "서울",
+    "BUSAN": "부산",
+    "INCHEON": "인천",
+    "DAEGU": "대구",
+    "DAEJEON": "대전",
+    "GWANGJU": "광주",
+    "ULSAN": "울산",
+    "SEJONG": "세종",
+    "GYEONGGI": "경기",
+    "GANGWON": "강원",
+    "CHUNGBUK": "충북",
+    "CHUNGNAM": "충남",
+    "JEONBUK": "전북",
+    "JEONNAM": "전남",
+    "GYEONGBUK": "경북",
+    "GYEONGNAM": "경남",
+    "JEJU": "제주"
+  },
+  "visaTypes": {
+    "F-2": "F-2 거주",
+    "F-4": "F-4 재외동포",
+    "F-5": "F-5 영주",
+    "F-6": "F-6 결혼이민",
+    "E-7": "E-7 특정활동",
+    "D-10": "D-10 구직",
+    "D-2": "D-2 유학",
+    "H-1": "H-1 관광취업",
+    "OTHER": "기타",
+    "UNDISCLOSED": "비공개"
+  },
+  "workModes": {
+    "REMOTE": "원격",
+    "ON_SITE": "현장 근무",
+    "HYBRID": "원격 또는 현장"
+  },
+  "languageLevels": {
+    "NATIVE": "모국어",
+    "FLUENT": "유창함",
+    "INTERMEDIATE": "중급",
+    "BASIC": "기초"
+  },
+  "contactTypes": {
+    "EMAIL": "이메일",
+    "TELEGRAM": "텔레그램",
+    "KAKAO": "카카오톡 ID"
+  }
+}

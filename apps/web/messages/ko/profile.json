@@ -1,0 +1,96 @@
+{
+  "my": {
+    "title": "내 프로필",
+    "empty": {
+      "title": "아직 프로필이 없습니다",
+      "body": "기술, 언어, 지역, 연락 방법을 담은 나만의 카드를 만들어 보세요.",
+      "create": "프로필 만들기"
+    },
+    "status": {
+      "DRAFT": "초안: 본인만 볼 수 있습니다.",
+      "PUBLISHED": "게시됨: 누구나 공개 페이지를 볼 수 있습니다.",
+      "hidden": "운영자가 숨긴 프로필입니다. 오류라고 생각되면 고객센터에 문의해 주세요."
+    },
+    "publish": "게시하기",
+    "unpublish": "게시 취소",
+    "edit": "프로필 수정",
+    "viewPublic": "공개 페이지 보기",
+    "contacts": "내 연락 방법 (클라이언트가 연락하기를 누른 뒤에만 표시됩니다)",
+    "publicUrl": "공개 주소: {url}"
+  },
+  "form": {
+    "createTitle": "프로필 만들기",
+    "editTitle": "프로필 수정",
+    "headline": {
+      "label": "한 줄 소개",
+      "hint": "검색 결과에 표시되는 한 줄입니다. 최대 {max}자."
+    },
+    "description": {
+      "label": "자기소개",
+      "hint": "{min}~{max}자."
+    },
+    "city": {
+      "label": "지역",
+      "none": "선택 안 함"
+    },
+    "workMode": {
+      "label": "근무 방식"
+    },
+    "visaType": {
+      "label": "비자 종류 (본인 신고)",
+      "none": "비공개",
+      "disclaimer": "비자 규정 내에서 일할 책임은 본인에게 있습니다. 하이코리아 공식 안내를 확인해 주세요."
+    },
+    "videoUrl": {
+      "label": "영상 링크 (유튜브 등)",
+      "hint": "선택 사항. 링크만 붙여 넣어 주세요. 영상을 직접 저장하지 않습니다."
+    },
+    "skills": {
+      "label": "기술",
+      "hint": "최대 {max}개까지 선택할 수 있습니다."
+    },
+    "languages": {
+      "label": "구사 언어",
+      "language": "언어",
+      "level": "수준",
+      "add": "언어 추가",
+      "remove": "삭제"
+    },
+    "portfolio": {
+      "label": "포트폴리오 링크",
+      "url": "URL",
+      "linkLabel": "이름 (선택)",
+      "add": "링크 추가",
+      "remove": "삭제"
+    },
+    "contacts": {
+      "label": "연락 방법",
+      "hint": "클라이언트가 연락하기를 누른 뒤에만 표시됩니다. 채널당 하나만 추가해 주세요.",
+      "type": "채널",
+      "value": "값",
+      "add": "연락처 추가",
+      "remove": "삭제"
+    },
+    "submit": {
+      "create": "프로필 만들기",
+      "edit": "변경 사항 저장"
+    },
+    "cancel": "취소",
+    "errors": {
+      "duplicate": "항목이 서로 달라야 합니다."
+    }
+  },
+  "view": {
+    "skills": "기술",
+    "languages": "언어",
+    "portfolio": "포트폴리오",
+    "video": "영상 보기",
+    "visaNote": "비자 종류는 본인 신고이며 확인되지 않았습니다.",
+    "publishedAt": "{date, date, medium} 게시"
+  },
+  "list": {
+    "title": "인재",
+    "empty": "아직 게시된 프로필이 없습니다.",
+    "more": "더 보기"
+  }
+}

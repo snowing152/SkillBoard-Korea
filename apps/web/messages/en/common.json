@@ -1,6 +1,28 @@
 {
   "tagline": "Talent marketplace for foreigners living in Korea. Post yourself; let people find you.",
   "language": { "label": "Language", "en": "English", "ko": "한국어", "ru": "Русский" },
+  "nav": {
+    "home": "Home",
+    "talents": "Browse talent",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "myProfile": "My profile"
+  },
+  "loading": "Loading…",
+  "errors": {
+    "VALIDATION_FAILED": "Some fields are invalid. Check the form and try again.",
+    "UNAUTHENTICATED": "Please sign in to continue.",
+    "FORBIDDEN": "You do not have permission to do this.",
+    "NOT_FOUND": "Not found.",
+    "CONFLICT": "This already exists.",
+    "RATE_LIMITED": "Too many attempts. Wait a minute and try again.",
+    "INTERNAL": "Something went wrong on our side. Try again later."
+  },
+  "errorPage": {
+    "title": "Something went wrong",
+    "body": "Try again. If it keeps happening, tell us the request id.",
+    "retry": "Try again"
+  },
   "notFound": {
     "title": "Page not found",
     "body": "The page you are looking for does not exist or was moved.",

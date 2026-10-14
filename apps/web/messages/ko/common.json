@@ -1,6 +1,28 @@
 {
   "tagline": "한국에 사는 외국인을 위한 인재 마켓플레이스. 나를 소개하고, 나를 찾게 하세요.",
   "language": { "label": "언어", "en": "English", "ko": "한국어", "ru": "Русский" },
+  "nav": {
+    "home": "홈",
+    "talents": "인재 둘러보기",
+    "signIn": "로그인",
+    "signOut": "로그아웃",
+    "myProfile": "내 프로필"
+  },
+  "loading": "불러오는 중…",
+  "errors": {
+    "VALIDATION_FAILED": "입력값에 오류가 있습니다. 확인 후 다시 시도해 주세요.",
+    "UNAUTHENTICATED": "계속하려면 로그인해 주세요.",
+    "FORBIDDEN": "이 작업을 수행할 권한이 없습니다.",
+    "NOT_FOUND": "찾을 수 없습니다.",
+    "CONFLICT": "이미 존재합니다.",
+    "RATE_LIMITED": "시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.",
+    "INTERNAL": "서버에 문제가 발생했습니다. 잠시 후 다시 시도해 주세요."
+  },
+  "errorPage": {
+    "title": "문제가 발생했습니다",
+    "body": "다시 시도해 주세요. 계속 반복되면 요청 ID를 알려 주세요.",
+    "retry": "다시 시도"
+  },
   "notFound": {
     "title": "페이지를 찾을 수 없습니다",
     "body": "찾으시는 페이지가 없거나 이동되었습니다.",

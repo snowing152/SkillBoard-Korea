@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getTranslations } from 'next-intl/server';
 import type { ReactNode } from 'react';
 import { RegisterServiceWorker } from '@/components/pwa/register-sw';
+import { ZodLocale } from '@/components/zod-locale';
 import { routing } from '@/i18n/routing';
 import '../globals.css';
 
@@ -27,7 +28,10 @@ export default async function LocaleLayout({ children }: { children: ReactNode }
   return (
     <html lang={locale}>
       <body className="min-h-dvh antialiased">
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          <ZodLocale />
+          {children}
+        </NextIntlClientProvider>
         <RegisterServiceWorker />
       </body>
     </html>

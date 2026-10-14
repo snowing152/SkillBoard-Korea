@@ -1,0 +1,49 @@
+{
+  "cities": {
+    "SEOUL": "Seoul",
+    "BUSAN": "Busan",
+    "INCHEON": "Incheon",
+    "DAEGU": "Daegu",
+    "DAEJEON": "Daejeon",
+    "GWANGJU": "Gwangju",
+    "ULSAN": "Ulsan",
+    "SEJONG": "Sejong",
+    "GYEONGGI": "Gyeonggi",
+    "GANGWON": "Gangwon",
+    "CHUNGBUK": "Chungcheongbuk-do",
+    "CHUNGNAM": "Chungcheongnam-do",
+    "JEONBUK": "Jeollabuk-do",
+    "JEONNAM": "Jeollanam-do",
+    "GYEONGBUK": "Gyeongsangbuk-do",
+    "GYEONGNAM": "Gyeongsangnam-do",
+    "JEJU": "Jeju"
+  },
+  "visaTypes": {
+    "F-2": "F-2 Resident",
+    "F-4": "F-4 Overseas Korean",
+    "F-5": "F-5 Permanent resident",
+    "F-6": "F-6 Marriage migrant",
+    "E-7": "E-7 Specially designated activities",
+    "D-10": "D-10 Job seeker",
+    "D-2": "D-2 Student",
+    "H-1": "H-1 Working holiday",
+    "OTHER": "Other",
+    "UNDISCLOSED": "Prefer not to say"
+  },
+  "workModes": {
+    "REMOTE": "Remote",
+    "ON_SITE": "On-site",
+    "HYBRID": "Remote or on-site"
+  },
+  "languageLevels": {
+    "NATIVE": "Native",
+    "FLUENT": "Fluent",
+    "INTERMEDIATE": "Intermediate",
+    "BASIC": "Basic"
+  },
+  "contactTypes": {
+    "EMAIL": "Email",
+    "TELEGRAM": "Telegram",
+    "KAKAO": "KakaoTalk ID"
+  }
+}

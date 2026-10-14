@@ -1,0 +1,96 @@
+{
+  "my": {
+    "title": "My profile",
+    "empty": {
+      "title": "You have no profile yet",
+      "body": "Create your card: skills, languages, city and how clients can contact you.",
+      "create": "Create profile"
+    },
+    "status": {
+      "DRAFT": "Draft: only you can see this profile.",
+      "PUBLISHED": "Published: anyone can open your public page.",
+      "hidden": "Hidden by a moderator. Contact support if you think this is a mistake."
+    },
+    "publish": "Publish",
+    "unpublish": "Unpublish",
+    "edit": "Edit profile",
+    "viewPublic": "View public page",
+    "contacts": "Your contact methods (shown to clients only after they press Contact)",
+    "publicUrl": "Public address: {url}"
+  },
+  "form": {
+    "createTitle": "Create your profile",
+    "editTitle": "Edit your profile",
+    "headline": {
+      "label": "Headline",
+      "hint": "One line shown in search results, up to {max} characters."
+    },
+    "description": {
+      "label": "About you",
+      "hint": "{min} to {max} characters."
+    },
+    "city": {
+      "label": "City or region",
+      "none": "Not specified"
+    },
+    "workMode": {
+      "label": "Work mode"
+    },
+    "visaType": {
+      "label": "Visa type (self-declared)",
+      "none": "Prefer not to say",
+      "disclaimer": "You are responsible for working within your visa rules. Check the official HiKorea guidance."
+    },
+    "videoUrl": {
+      "label": "Video link (YouTube etc.)",
+      "hint": "Optional. Paste a link; we do not host videos."
+    },
+    "skills": {
+      "label": "Skills",
+      "hint": "Pick up to {max}."
+    },
+    "languages": {
+      "label": "Languages you speak",
+      "language": "Language",
+      "level": "Level",
+      "add": "Add language",
+      "remove": "Remove"
+    },
+    "portfolio": {
+      "label": "Portfolio links",
+      "url": "URL",
+      "linkLabel": "Label (optional)",
+      "add": "Add link",
+      "remove": "Remove"
+    },
+    "contacts": {
+      "label": "Contact methods",
+      "hint": "Shown to clients only after they press Contact. Add at most one per channel.",
+      "type": "Channel",
+      "value": "Value",
+      "add": "Add contact",
+      "remove": "Remove"
+    },
+    "submit": {
+      "create": "Create profile",
+      "edit": "Save changes"
+    },
+    "cancel": "Cancel",
+    "errors": {
+      "duplicate": "Each entry must be different."
+    }
+  },
+  "view": {
+    "skills": "Skills",
+    "languages": "Languages",
+    "portfolio": "Portfolio",
+    "video": "Watch video",
+    "visaNote": "Visa type is self-declared and not verified.",
+    "publishedAt": "Published {date, date, medium}"
+  },
+  "list": {
+    "title": "Talent",
+    "empty": "No published profiles yet.",
+    "more": "Load more"
+  }
+}
