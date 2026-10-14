@@ -53,8 +53,8 @@ openReportCount: z.number().int().min(0) })`. The UI derives the badge: `hiddenA
 z.string().nullable(), status: z.enum(REPORT_STATUSES), createdAt: z.iso.datetime(), resolvedAt:
 z.iso.datetime().nullable(), reporter: UserRefSchema.nullable(), profile: AdminReportProfileSchema })`.
 - `ResolveReportSchema = z.object({ status: z.enum(['RESOLVED', 'DISMISSED']) })`.
-- `HIDE_REASON_CODES = ['SPAM', 'SCAM', 'INAPPROPRIATE', 'IMPERSONATION', 'VISA_OR_LEGAL', 'OTHER']
-as const` (`moderation.ts`); `HideProfileSchema = z.object({ reasonCode: z.enum(HIDE_REASON_CODES),
+- `HIDE_REASON_CODES = ['SPAM', 'SCAM', 'INAPPROPRIATE', 'IMPERSONATION', 'VISA_OR_LEGAL',
+'MISLEADING_INFO', 'DUPLICATE_ACCOUNT', 'OTHER'] as const` (`moderation.ts`); `HideProfileSchema = z.object({ reasonCode: z.enum(HIDE_REASON_CODES),
 note: z.string().trim().max(200).optional() })`; `UnhideProfileSchema = z.object({ note:
 z.string().trim().max(200).optional() })`. The route table's `ModerationReasonSchema` means these two.
 - `ModerationActionSchema = z.object({ id: z.uuid(), action: z.enum(['HIDE', 'UNHIDE']), reason:
@@ -126,9 +126,20 @@ Namespaces `report` and `admin` (new). Actions in `src/actions/reports.ts` and `
   `profile.history`, `profile.contacts`, `profile.badge.DRAFT`, `profile.badge.PUBLISHED`,
   `profile.badge.HIDDEN` (derived from `hiddenAt`), `action.HIDE`, `action.UNHIDE`, `loadMore`. (`profile`):
   `my.hiddenReason.SPAM`, `my.hiddenReason.SCAM`, `my.hiddenReason.INAPPROPRIATE`,
-  `my.hiddenReason.IMPERSONATION`, `my.hiddenReason.VISA_OR_LEGAL`, `my.hiddenReason.OTHER`,
-  `my.hiddenNote`, `my.hiddenAppeal` (`{email}`). (`admin`) also: `reasonCode.<CODE>` for the six codes,
+  `my.hiddenReason.IMPERSONATION`, `my.hiddenReason.VISA_OR_LEGAL`, `my.hiddenReason.MISLEADING_INFO`,
+  `my.hiddenReason.DUPLICATE_ACCOUNT`, `my.hiddenReason.OTHER`,
+  `my.hiddenNote`, `my.hiddenAppeal` (`{email}`). (`admin`) also: `reasonCode.<CODE>` for the eight codes,
   `profile.noteLabel`, `profile.noteHint` ("Optional, max 200 characters, the owner will read it").
+- Labels of the two new hide reasons (`admin.reasonCode.<CODE>` is the short admin label,
+  `profile.my.hiddenReason.<CODE>` the sentence the owner reads; the other six follow the same pattern):
+
+  | Code                | en                                                 | ko                                | ru                                                     |
+  | ------------------- | -------------------------------------------------- | --------------------------------- | ------------------------------------------------------ |
+  | `MISLEADING_INFO`   | Misleading information (skills or qualifications)  | 허위 정보 (기술 또는 자격)        | Недостоверная информация (навыки или квалификация)     |
+  | `DUPLICATE_ACCOUNT` | Duplicate account (several profiles of one person) | 중복 계정 (한 사람의 여러 프로필) | Дубликат аккаунта (несколько профилей одного человека) |
+
+  `OTHER` stays last in `HIDE_REASON_CODES` and in the radio group.
+
 - shadcn: radio-group, textarea, dialog, badge, tabs (add and pin what is missing).
 
 ## Acceptance criteria

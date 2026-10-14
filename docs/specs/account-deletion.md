@@ -157,6 +157,8 @@ Namespace `account` (owned by `accounts`) gains a `delete` group. Actions in `sr
 13. Logs for request, cancel and purge contain ids, counts and the requestId only, never an email or
     hash (`account.service.spec.ts` and `purge.service.spec.ts` spy on `Logger.prototype`).
 14. The Playwright suite leaves no `e2e-web-*` users behind (teardown asserts the purge result).
+15. The purge workflow calls the endpoint with `curl --fail`, so an HTTP error fails the run and GitHub
+    emails the owner (tech-debt row on scheduled-workflow expiry).
 
 Tests: `packages/shared/src/auth/account.schema.test.ts`, `apps/api/src/modules/auth/account.service.spec.ts`,
 `apps/api/src/modules/admin/purge.service.spec.ts`, `apps/api/src/common/auth/job-token.guard.spec.ts`,
