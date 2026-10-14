@@ -1,7 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
-  "globalEnv": ["NODE_ENV", "CI", "DATABASE_URL", "JWT_ACCESS_SECRET"],
+  "globalEnv": ["NODE_ENV", "CI"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -10,7 +10,18 @@
     "typecheck": { "dependsOn": ["^build"] },
     "lint": { "dependsOn": ["^build"] },
     "test": { "dependsOn": ["^build"] },
-    "test:e2e": { "dependsOn": ["build"], "cache": false },
-    "dev": { "dependsOn": ["^build"], "cache": false, "persistent": true }
+    "test:e2e": {
+      "dependsOn": ["build"],
+      "cache": false,
+      "env": ["DATABASE_URL"],
+      "passThroughEnv": ["JWT_ACCESS_SECRET"]
+    },
+    "dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": true,
+      "env": ["DATABASE_URL"],
+      "passThroughEnv": ["JWT_ACCESS_SECRET"]
+    }
   }
 }
