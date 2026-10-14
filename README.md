@@ -10,10 +10,15 @@ subagents live in `.claude/`).
 ```bash
 pnpm install            # Node >= 24, pnpm 12 (version pinned in package.json)
 pnpm db:up              # Postgres 17 + S3-compatible storage in Docker
-cp apps/api/.env.example apps/api/.env
+cp apps/api/.env.example apps/api/.env      # includes a dev-only JWT secret; replace it outside dev
 cp apps/web/.env.example apps/web/.env.local
+pnpm --filter @skillboard/api db:deploy      # apply migrations
+pnpm --filter @skillboard/api db:seed        # demo data (or `pnpm db:reset`, humans only)
 pnpm dev                # api http://localhost:3001/v1  docs http://localhost:3001/docs  web http://localhost:3000
 ```
+
+Seed accounts (password `Password123!`): `talent01@skillboard.local` … `talent20@skillboard.local`,
+`client@skillboard.local`, `admin@skillboard.local`. Sign in at `/sign-in`; your card lives at `/me/talent-profile`.
 
 ## Check it
 

@@ -13,6 +13,8 @@ concurrency:
 
 env:
   DATABASE_URL: postgresql://skillboard:skillboard@localhost:5432/skillboard
+  # CI-only secret: signs tokens for the e2e runs, never used anywhere else.
+  JWT_ACCESS_SECRET: ci-only-secret-for-e2e-runs-0123456789abcdef
 
 jobs:
   check:
@@ -60,8 +62,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - name: Apply migrations
-        run: pnpm --filter @skillboard/api db:deploy
+      - name: Apply migrations and seed
+        run: pnpm --filter @skillboard/api db:deploy && pnpm --filter @skillboard/api db:seed
       - name: API e2e
         run: pnpm --filter @skillboard/api test:e2e
       - name: Install Playwright browser

@@ -50,18 +50,18 @@ student: explain _why_ in docs and comments.
 
 ## Where things are
 
-| Need                                | Look at                                                                                                                                |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Big picture, verified library facts | `docs/architecture.md`                                                                                                                 |
-| Entities, visibility rules, Prisma  | `docs/domain.md`                                                                                                                       |
-| Why a decision was made             | `docs/decisions/` (index in its README)                                                                                                |
-| Feature specs                       | `docs/specs/` (template `_template.md`)                                                                                                |
-| Style rules a linter cannot check   | `docs/conventions.md`                                                                                                                  |
-| Known traps, deliberate shortcuts   | `docs/pitfalls.md`, `docs/tech-debt.md`                                                                                                |
-| Which model for which task          | `docs/ai/model-routing.md`                                                                                                             |
-| Design hand-off                     | `docs/design/README.md`                                                                                                                |
-| Rules for one part                  | `apps/web/CLAUDE.md`, `apps/api/CLAUDE.md`, `packages/shared/CLAUDE.md`                                                                |
-| **Reference feature to copy**       | `apps/api/src/modules/health/` + `packages/shared/src/health/` until Phase D lands `talent-profiles`, which then becomes the reference |
+| Need                                | Look at                                                                                                                                                                                                                                           |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Big picture, verified library facts | `docs/architecture.md`                                                                                                                                                                                                                            |
+| Entities, visibility rules, Prisma  | `docs/domain.md`                                                                                                                                                                                                                                  |
+| Why a decision was made             | `docs/decisions/` (index in its README)                                                                                                                                                                                                           |
+| Feature specs                       | `docs/specs/` (template `_template.md`)                                                                                                                                                                                                           |
+| Style rules a linter cannot check   | `docs/conventions.md`                                                                                                                                                                                                                             |
+| Known traps, deliberate shortcuts   | `docs/pitfalls.md`, `docs/tech-debt.md`                                                                                                                                                                                                           |
+| Which model for which task          | `docs/ai/model-routing.md`                                                                                                                                                                                                                        |
+| Design hand-off                     | `docs/design/README.md`                                                                                                                                                                                                                           |
+| Rules for one part                  | `apps/web/CLAUDE.md`, `apps/api/CLAUDE.md`, `packages/shared/CLAUDE.md`                                                                                                                                                                           |
+| **Reference feature to copy**       | `docs/specs/talent-profiles.md` → `packages/shared/src/talent-profiles/`, `apps/api/src/modules/talent-profiles/`, `apps/web/src/components/talent-profile/` and the pages under `apps/web/src/app/[locale]/`. `health` stays the minimal module. |
 
 ## Workflow for a feature
 

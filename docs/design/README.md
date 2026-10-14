@@ -5,22 +5,23 @@ this page says where the design surface is and which constraints it has.
 
 ## Where the design lives
 
-| What                                   | Where                                                       | Notes                                                                                                                                                            |
-| -------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tokens (colors, radii, spacing, fonts) | `apps/web/src/app/globals.css`, `@theme { … }` (Tailwind 4) | Placeholder values. Add tokens there and use them through utilities (`bg-primary`). Dark mode via `@custom-variant` when you add it.                             |
-| Primitives                             | `apps/web/src/components/ui/`                               | shadcn/ui copies owned in repo. Restyle here; feature code imports them unchanged. Add primitives from `apps/web` with `pnpm dlx shadcn@latest add <component>`. |
-| Feature components                     | `apps/web/src/components/<feature>/`                        | Logic lives here. Change layout and classes, not behaviour.                                                                                                      |
-| Pages                                  | `apps/web/src/app/[locale]/`                                | `page.tsx` stays thin; `loading.tsx` and `error.tsx` where defined.                                                                                              |
-| Icons, PWA                             | `apps/web/public/icon.svg`, `src/app/manifest.ts`           | PNG icon sizes and screenshots are missing (`docs/tech-debt.md`).                                                                                                |
-| Fonts                                  | `src/app/[locale]/layout.tsx` via `next/font`               | Must cover Latin, Cyrillic and Hangul (for example Pretendard or Noto Sans KR plus Inter, or one variable font).                                                 |
+| What                                   | Where                                                       | Notes                                                                                                                                                                                                            |
+| -------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tokens (colors, radii, spacing, fonts) | `apps/web/src/app/globals.css`, `@theme { … }` (Tailwind 4) | Placeholder values. Add tokens there and use them through utilities (`bg-primary`). Dark mode via `@custom-variant` when you add it.                                                                             |
+| Primitives                             | `apps/web/src/components/ui/`                               | shadcn/ui 4 copies owned in repo (Base UI, `components.json`). Restyle here; feature code imports them unchanged. Add primitives from `apps/web` with `pnpm dlx shadcn@4.21.4 add <component>` and pin versions. |
+| Feature components                     | `apps/web/src/components/<feature>/`                        | Logic lives here. Change layout and classes, not behaviour.                                                                                                                                                      |
+| Pages                                  | `apps/web/src/app/[locale]/`                                | `page.tsx` stays thin; `loading.tsx` and `error.tsx` where defined.                                                                                                                                              |
+| Icons, PWA                             | `apps/web/public/icon.svg`, `src/app/manifest.ts`           | PNG icon sizes and screenshots are missing (`docs/tech-debt.md`).                                                                                                                                                |
+| Fonts                                  | `src/app/[locale]/layout.tsx` via `next/font`               | Must cover Latin, Cyrillic and Hangul (for example Pretendard or Noto Sans KR plus Inter, or one variable font).                                                                                                 |
 
 ## Pages
 
-Existing: home (`/`), offline (`/offline`), not-found. Planned per `docs/specs/`: sign-in and sign-up
-(role choice, consent), talent profile edit (`/me/profile`), public profile (`/t/[slug]`), search
-(`/search` with filters: skill, language, city, remote/on-site, visa), contact reveal (sheet on the
-profile), report profile, admin moderation list, legal pages (privacy, terms, visa disclaimer), account
-deletion.
+Existing (unstyled, Phase D): home (`/`), offline, not-found, sign-in (`/sign-in`), my profile
+(`/me/talent-profile`: empty, draft, published and hidden states), profile form
+(`/me/talent-profile/edit`), public profile (`/t/[slug]`), talent list (`/talents`), error page.
+Planned per `docs/specs/`: sign-up (role choice, consent), search (`/search` with filters: skill,
+language, city, remote/on-site, visa), contact reveal (sheet on the profile), report profile, admin
+moderation list, legal pages (privacy, terms, visa disclaimer), account deletion.
 
 ## Constraints
 
@@ -37,8 +38,8 @@ deletion.
 - **Two client kinds**: copy and flows must work for a private person (a parent looking for a tutor) as
   well as for a company. No company fields outside optional ones.
 - **Free hosting**: the first API call after idle can take 30–60 s (ADR 0013); design a "waking up" state.
-- **Accessibility**: WCAG AA contrast, visible focus, labelled fields. shadcn primitives keep Radix
-  semantics; do not replace them with plain `div`s.
+- **Accessibility**: WCAG AA contrast, visible focus, labelled fields. shadcn 4 primitives are built on
+  Base UI and keep its semantics; do not replace them with plain `div`s.
 - **Do not touch**: `packages/*`, `apps/api`, feature logic, i18n wiring, env files. If a component needs
   a new prop for styling, add it without changing behaviour and say so in the PR.
 
