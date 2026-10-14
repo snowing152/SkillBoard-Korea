@@ -21,10 +21,12 @@ export async function saveTalentProfile(
   if (!client) return { ok: false, code: 'UNAUTHENTICATED' };
 
   try {
+    // The flag is create-only; the API's PATCH schema does not know it.
+    const { acknowledgeVisaDisclaimer: _ack, ...fields } = parsed.data;
     const { data, error } =
       mode === 'create'
         ? await client.POST('/v1/me/talent-profile', { body: parsed.data })
-        : await client.PATCH('/v1/me/talent-profile', { body: parsed.data });
+        : await client.PATCH('/v1/me/talent-profile', { body: fields });
     if (!data) return toActionFailure(error);
   } catch (err: unknown) {
     return toActionFailure(err);
