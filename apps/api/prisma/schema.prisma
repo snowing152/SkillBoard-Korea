@@ -140,6 +140,7 @@ model Consent {
   user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   type       ConsentType
   version    String // e.g. "2026-10-01"; matches the legal page version
+  locale     String      @default("en") // UI language when accepted; validated against LOCALES in shared
   acceptedAt DateTime    @default(now())
 
   @@unique([userId, type, version])

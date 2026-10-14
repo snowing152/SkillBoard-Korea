@@ -7,6 +7,7 @@
 /* eslint-disable no-console */
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { LEGAL_VERSIONS, SIGNUP_CONSENT_DOCUMENTS } from '@skillboard/shared';
 import { argon2id, hash } from 'argon2';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 import type { ContactType, LanguageLevel, WorkMode } from '../src/generated/prisma/enums.js';
@@ -348,6 +349,18 @@ async function main(): Promise<void> {
       },
     });
   }
+
+  // Every seed user accepted the current documents, so they are not sent to /consent on sign-in;
+  // talents also accepted the visa disclaimer they would have ticked when creating the profile.
+  const consentRows = [ID.user(1), ID.user(2)].flatMap((userId) =>
+    SIGNUP_CONSENT_DOCUMENTS.map((type) => ({ userId, type, version: LEGAL_VERSIONS[type] })),
+  );
+  for (let i = 1; i <= talentNames.length; i += 1) {
+    for (const type of [...SIGNUP_CONSENT_DOCUMENTS, 'VISA_DISCLAIMER' as const]) {
+      consentRows.push({ userId: ID.user(100 + i), type, version: LEGAL_VERSIONS[type] });
+    }
+  }
+  await prisma.consent.createMany({ data: consentRows.map((row) => ({ ...row, locale: 'en' })) });
 
   // Moderation examples for the reports/moderation spec: two open reports, one hide action.
   await prisma.report.createMany({
