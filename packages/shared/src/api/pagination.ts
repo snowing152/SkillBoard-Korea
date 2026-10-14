@@ -18,7 +18,9 @@ export type PaginationQuery = z.infer<typeof PaginationQuerySchema>;
 export function paginatedSchema<T extends z.ZodType>(item: T) {
   return z.object({
     items: z.array(item),
-    nextCursor: z.string().nullable(),
+    // `.max()` is not only the string rule: a bare `z.string().nullable()` is emitted as `string[]` in
+    // OpenAPI by nestjs-zod (docs/pitfalls.md); any extra constraint avoids that path.
+    nextCursor: z.string().max(200).nullable(),
   });
 }
 export type Paginated<T> = { items: T[]; nextCursor: string | null };
