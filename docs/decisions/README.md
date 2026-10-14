@@ -25,3 +25,4 @@ never edit an accepted ADR's Decision section.
 | 0017 | API conventions: errors, pagination, IDs, time                                        | Accepted |
 | 0018 | Security and personal data (PIPA)                                                     | Accepted |
 | 0019 | Access tokens: own Nest guard, Zod-validated login, web session cookie (refines 0009) | Accepted |
+| 0020 | Refresh tokens in the body, second httpOnly cookie, silent refresh in the proxy       | Accepted |
