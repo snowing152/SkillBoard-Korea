@@ -1,11 +1,14 @@
 ---
 name: implement
 description: Implement a spec from docs/specs/ end to end by copying the reference feature, then run pnpm check.
-argument-hint: <spec-slug>
+argument-hint: <spec-slug, e.g. legal>
 disable-model-invocation: true
 ---
 
 Implement `docs/specs/$0.md`.
+
+`$0` is the spec slug. If you were given a path (`docs/specs/legal.md`), strip the `docs/specs/`
+prefix and the `.md` suffix first; use the bare slug (`legal`) everywhere below.
 
 1. Read the spec, the "Workflow for a feature" and "Reference feature to copy" sections of `AGENTS.md`,
    and the `CLAUDE.md` of every part you will touch. If the spec has open questions, stop and ask.

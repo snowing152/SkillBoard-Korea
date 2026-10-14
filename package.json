@@ -9,6 +9,7 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "check": "turbo run typecheck lint test && prettier --check .",
+    "check:ci": "node scripts/check-ci.mjs",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "test": "turbo run test",

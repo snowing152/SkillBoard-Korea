@@ -1,10 +1,13 @@
 ---
 name: review
 description: Review the current branch diff against the golden rules, the spec and the security checklist. Runs in the read-only Sonnet reviewer subagent.
-argument-hint: '[spec-slug] [base-branch]'
+argument-hint: '[spec-slug, e.g. legal] [base-branch]'
 context: fork
 agent: reviewer
 ---
+
+Spec argument `$0` is a bare slug; if it is a path (`docs/specs/legal.md`), strip the `docs/specs/`
+prefix and `.md` suffix.
 
 Review this branch against `main` (or base branch `$1` if given) for the spec `$0` (if empty, infer it
 from the branch name `feat/<slug>` → `docs/specs/<slug>.md`).
