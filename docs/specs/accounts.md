@@ -1,6 +1,6 @@
 # Accounts and auth: sign-up, Google, email verification, refresh, password reset, settings
 
-Status: Ready · Model: Sonnet (Opus reviews the token rotation and the Google callback) · ADRs: 0009,
+Status: Implemented · Model: Sonnet (Opus reviews the token rotation and the Google callback) · ADRs: 0009,
 0013, 0017, 0018, 0019, 0020 · Branch: `feat/accounts` · Order: 2 of 6 · Depends on `legal`
 (`ConsentsService`, `LEGAL_VERSIONS`).
 
