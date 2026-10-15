@@ -109,7 +109,7 @@ describe('TokensService', () => {
         code: 'UNAUTHENTICATED',
       });
       expect(firstCallArg(prisma.refreshToken.updateMany)).toMatchObject({
-        where: { userId: USER_ID, revokedAt: null },
+        where: { userId: USER_ID, OR: [{ revokedAt: null }, expect.anything()] },
       });
       expect(prisma.refreshToken.create).not.toHaveBeenCalled();
     });
@@ -142,6 +142,17 @@ describe('TokensService', () => {
         data: { revokedAt: Date };
       };
       expect(NOW.getTime() - data.revokedAt.getTime()).toBeGreaterThan(GRACE_SECONDS * 1000);
+    });
+
+    it('revokeAll also reaches tokens rotated inside the grace window', async () => {
+      await service.revokeAll(USER_ID);
+      const arg = firstCallArg(prisma.refreshToken.updateMany) as {
+        where: { OR: [{ revokedAt: null }, { revokedAt: { gt: Date } }] };
+      };
+      expect(arg.where.OR[0]).toEqual({ revokedAt: null });
+      expect(NOW.getTime() - arg.where.OR[1].revokedAt.gt.getTime()).toBeGreaterThan(
+        GRACE_SECONDS * 1000,
+      );
     });
 
     it('logout of one token only touches that user’s row', async () => {

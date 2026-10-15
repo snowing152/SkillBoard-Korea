@@ -130,12 +130,15 @@ export class TokensService {
     });
   }
 
-  /** Logout everywhere, password reset, theft response. Already revoked rows keep their timestamp. */
+  /** Logout everywhere, password reset, theft response. Leaves nothing inside the grace window. */
   async revokeAll(userId: string, tx?: Prisma.TransactionClient): Promise<void> {
     const db = tx ?? this.prisma;
+    const cutoff = this.deliberateRevokedAt();
+    // Also rows rotated inside the grace window: otherwise a token rotated seconds ago would still pass
+    // as a "concurrent refresh" after a reset or a theft response and mint a fresh pair.
     await db.refreshToken.updateMany({
-      where: { userId, revokedAt: null },
-      data: { revokedAt: this.deliberateRevokedAt() },
+      where: { userId, OR: [{ revokedAt: null }, { revokedAt: { gt: cutoff } }] },
+      data: { revokedAt: cutoff },
     });
   }
 

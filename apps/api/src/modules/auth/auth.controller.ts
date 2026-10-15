@@ -26,7 +26,7 @@ import { ZodSerializerDto } from 'nestjs-zod';
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user.js';
 import { CurrentUser, Public } from '../../common/auth/decorators.js';
 import { UserAgent } from '../../common/http/user-agent.decorator.js';
-import { AuthService } from './auth.service.js';
+import { AuthService, type GoogleOutcome } from './auth.service.js';
 import { AuthSessionDto } from './dto/auth-session.dto.js';
 import { ExchangeDto } from './dto/exchange.dto.js';
 import { GoogleStartQueryDto } from './dto/google-start-query.dto.js';
@@ -145,7 +145,10 @@ export class AuthController {
       res.redirect(this.auth.oauthRedirectUrl(locale, { error: 'OAUTH_FAILED' }));
       return;
     }
-    const outcome = await this.auth.completeGoogle(req.oauthProfile, verified);
+    // Whatever goes wrong, the browser must end on the web app, not on a JSON error of the API origin.
+    const outcome = await this.auth
+      .completeGoogle(req.oauthProfile, verified)
+      .catch((): GoogleOutcome => ({ ok: false, error: 'OAUTH_FAILED' }));
     const params = outcome.ok
       ? { code: outcome.code, ...(verified.next ? { next: verified.next } : {}) }
       : { error: outcome.error };

@@ -172,11 +172,8 @@ export class AuthService {
       select: { id: true, email: true, locale: true },
     });
     if (!user) return;
-    const token = await this.tokens.issueOneTime(user.id, 'PASSWORD_RESET');
-    const link = `${this.webUrl()}/${toLocale(user.locale)}/reset-password?token=${token}`;
-    const mail = passwordResetMail(toLocale(user.locale), link);
-    // Not awaited: waiting for the mail provider would make a known address measurably slower.
-    void this.deliver(user.id, 'password-reset', { to: user.email, ...mail });
+    // Token and mail are both off the request path: a known address must not answer measurably slower.
+    void this.issueAndSendReset(user.id, user.email, toLocale(user.locale));
   }
 
   async confirmPasswordReset(token: string, password: string): Promise<void> {
@@ -250,9 +247,16 @@ export class AuthService {
           this.logger.warn(`google userId=${sameEmail.id} outcome=email_not_verified`);
           return { ok: false, error: 'EMAIL_NOT_VERIFIED' };
         }
-        await this.prisma.authIdentity.create({
-          data: { provider: 'GOOGLE', providerUserId: profile.id, userId: sameEmail.id },
-        });
+        try {
+          await this.prisma.authIdentity.create({
+            data: { provider: 'GOOGLE', providerUserId: profile.id, userId: sameEmail.id },
+          });
+        } catch (err: unknown) {
+          // Two concurrent callbacks linked the same identity; the first one won, which is fine.
+          if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')) {
+            throw err;
+          }
+        }
         userId = sameEmail.id;
         outcome = 'linked';
       } else {
@@ -349,6 +353,19 @@ export class AuthService {
   }
 
   // ---- helpers --------------------------------------------------------------------------------
+
+  private async issueAndSendReset(userId: string, email: string, locale: Locale): Promise<void> {
+    try {
+      const token = await this.tokens.issueOneTime(userId, 'PASSWORD_RESET');
+      const link = `${this.webUrl()}/${locale}/reset-password?token=${token}`;
+      await this.deliver(userId, 'password-reset', {
+        to: email,
+        ...passwordResetMail(locale, link),
+      });
+    } catch {
+      this.logger.warn(`password-reset userId=${userId} outcome=failed`);
+    }
+  }
 
   /** Where the Google callback sends the browser: the web app's `/<locale>/auth/callback` route. */
   oauthRedirectUrl(locale: Locale, params: Record<string, string>): string {

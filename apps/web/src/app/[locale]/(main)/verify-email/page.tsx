@@ -6,7 +6,7 @@ import { getAccessToken } from '@/lib/session';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('auth.verify');
-  return { title: t('successTitle') };
+  return { title: t('confirming') };
 }
 
 /** Landing page of the link in the verification email. The token is spent by the client component. */

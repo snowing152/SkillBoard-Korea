@@ -296,6 +296,10 @@ describe('auth and accounts (e2e)', () => {
       .post('/v1/auth/password-reset/request')
       .send({ email: EMAILS.main })
       .expect(204);
+    // The reset mail is sent off the request path (no timing oracle), so wait for it briefly.
+    for (let i = 0; i < 50 && outbox.length === mailsBefore; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
     expect(outbox).toHaveLength(mailsBefore + 1);
     expect(outbox[mailsBefore]?.text).toContain('/ru/reset-password?token=');
     const token = lastToken();

@@ -7,8 +7,7 @@
   "email": {
     "title": "Email",
     "verified": "Verified",
-    "unverified": "Not verified yet",
-    "resend": "Send the verification email again"
+    "unverified": "Not verified yet"
   },
   "password": {
     "title": "Password",

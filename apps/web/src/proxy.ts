@@ -15,7 +15,8 @@ const SKIP_REFRESH_PREFIX = '/auth/callback';
 type Renewal = { kind: 'renewed'; session: AuthSession } | { kind: 'rejected' } | { kind: 'none' };
 
 async function maybeRenew(request: NextRequest, path: string): Promise<Renewal> {
-  if (path.startsWith(SKIP_REFRESH_PREFIX)) return { kind: 'none' };
+  if (path === SKIP_REFRESH_PREFIX || path.startsWith(`${SKIP_REFRESH_PREFIX}/`))
+    return { kind: 'none' };
   if (request.cookies.has(SESSION_COOKIE)) return { kind: 'none' };
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
   if (!refreshToken) return { kind: 'none' };

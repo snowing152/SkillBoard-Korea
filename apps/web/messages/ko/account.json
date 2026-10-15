@@ -7,8 +7,7 @@
   "email": {
     "title": "이메일",
     "verified": "인증됨",
-    "unverified": "아직 인증되지 않음",
-    "resend": "인증 이메일 다시 보내기"
+    "unverified": "아직 인증되지 않음"
   },
   "password": {
     "title": "비밀번호",
