@@ -34,7 +34,9 @@ describe('TokensService', () => {
   beforeEach(async () => {
     jest.spyOn(Date, 'now').mockReturnValue(NOW.getTime());
     prisma.$transaction.mockImplementation((arg: unknown) =>
-      typeof arg === 'function' ? (arg as (tx: unknown) => unknown)(prisma) : Promise.all(arg as unknown[]),
+      typeof arg === 'function'
+        ? (arg as (tx: unknown) => unknown)(prisma)
+        : Promise.all(arg as unknown[]),
     );
     const moduleRef = await Test.createTestingModule({
       providers: [

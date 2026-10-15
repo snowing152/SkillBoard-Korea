@@ -73,9 +73,9 @@ describe('token schemas', () => {
     expect(RefreshSchema.safeParse({ refreshToken: 'short' }).success).toBe(false);
     expect(RefreshSchema.safeParse({ refreshToken: TOKEN }).success).toBe(true);
     expect(ExchangeSchema.safeParse({ code: 'x'.repeat(201) }).success).toBe(false);
-    expect(
-      PasswordResetConfirmSchema.safeParse({ token: TOKEN, password: 'short' }).success,
-    ).toBe(false);
+    expect(PasswordResetConfirmSchema.safeParse({ token: TOKEN, password: 'short' }).success).toBe(
+      false,
+    );
   });
 
   it('logout defaults `all` to false', () => {

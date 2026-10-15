@@ -16,7 +16,8 @@ export class GoogleStartGuard extends AuthGuard('google') {
   }
 
   override async canActivate(context: ExecutionContext): Promise<boolean> {
-    if (!this.auth.googleEnabled()) throw new ApiError('NOT_FOUND', 'Google sign-in is not enabled');
+    if (!this.auth.googleEnabled())
+      throw new ApiError('NOT_FOUND', 'Google sign-in is not enabled');
     return (await super.canActivate(context)) as boolean;
   }
 
@@ -50,7 +51,8 @@ export class GoogleCallbackGuard extends AuthGuard('google') {
   }
 
   override async canActivate(context: ExecutionContext): Promise<boolean> {
-    if (!this.auth.googleEnabled()) throw new ApiError('NOT_FOUND', 'Google sign-in is not enabled');
+    if (!this.auth.googleEnabled())
+      throw new ApiError('NOT_FOUND', 'Google sign-in is not enabled');
     try {
       return (await super.canActivate(context)) as boolean;
     } catch {

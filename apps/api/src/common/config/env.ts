@@ -34,6 +34,14 @@ export const EnvSchema = z
     EMAIL_PROVIDER: z.enum(['console', 'resend']).default('console'),
     RESEND_API_KEY: z.string().min(1).optional(),
     EMAIL_FROM: z.string().min(3).default('SkillBoard Korea <noreply@localhost>'),
+    /**
+     * Switches the rate limiter off for the Playwright run, where two browsers sign in dozens of times
+     * from one IP. Refused in production (ADR 0018 limits are a security control).
+     */
+    RATE_LIMIT_DISABLED: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
     /** All three set = Google sign-in on; any missing = the Google routes answer NOT_FOUND. */
     GOOGLE_CLIENT_ID: z.string().min(1).optional(),
     GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
@@ -45,6 +53,13 @@ export const EnvSchema = z
         code: 'custom',
         path: ['RESEND_API_KEY'],
         message: 'Required when EMAIL_PROVIDER=resend',
+      });
+    }
+    if (env.RATE_LIMIT_DISABLED && env.NODE_ENV === 'production') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['RATE_LIMIT_DISABLED'],
+        message: 'The rate limiter cannot be disabled in production',
       });
     }
     if (env.EMAIL_PROVIDER === 'console' && env.NODE_ENV === 'production') {

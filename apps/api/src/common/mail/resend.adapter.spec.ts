@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type { Env } from '../config/env.js';
 import { ResendMailAdapter } from './resend.adapter.js';
@@ -13,9 +14,11 @@ describe('ResendMailAdapter', () => {
 
   beforeEach(() => {
     fetchSpy = jest.spyOn(globalThis, 'fetch');
+    jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
   });
   afterEach(() => {
     fetchSpy.mockRestore();
+    jest.restoreAllMocks();
   });
 
   it('posts the message to Resend with the bearer key', async () => {

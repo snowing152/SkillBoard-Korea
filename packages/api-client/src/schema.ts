@@ -1041,9 +1041,7 @@ export interface operations {
   AuthController_register: {
     parameters: {
       query?: never;
-      header: {
-        'user-agent': string;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -1073,9 +1071,7 @@ export interface operations {
   AuthController_login: {
     parameters: {
       query?: never;
-      header: {
-        'user-agent': string;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -1098,9 +1094,7 @@ export interface operations {
   AuthController_refresh: {
     parameters: {
       query?: never;
-      header: {
-        'user-agent': string;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };
@@ -1272,9 +1266,7 @@ export interface operations {
   AuthController_exchange: {
     parameters: {
       query?: never;
-      header: {
-        'user-agent': string;
-      };
+      header?: never;
       path?: never;
       cookie?: never;
     };

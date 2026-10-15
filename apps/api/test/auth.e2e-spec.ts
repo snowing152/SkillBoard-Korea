@@ -32,8 +32,7 @@ describe('auth and accounts (e2e)', () => {
   let prisma: PrismaService;
   const outbox: MailMessage[] = [];
 
-  const cleanup = () =>
-    prisma.user.deleteMany({ where: { email: { in: Object.values(EMAILS) } } });
+  const cleanup = () => prisma.user.deleteMany({ where: { email: { in: Object.values(EMAILS) } } });
   const lastToken = () => {
     const text = outbox[outbox.length - 1]?.text ?? '';
     return /token=([A-Za-z0-9_-]+)/.exec(text)?.[1] ?? '';
@@ -115,7 +114,12 @@ describe('auth and accounts (e2e)', () => {
   });
 
   it('refuses a sign-up without the consent box and a duplicate email', async () => {
-    const base = { email: EMAILS.main, password: PASSWORD, displayName: 'E2E Auth', role: 'TALENT' };
+    const base = {
+      email: EMAILS.main,
+      password: PASSWORD,
+      displayName: 'E2E Auth',
+      role: 'TALENT',
+    };
     const res = await request(server).post('/v1/auth/register').send(base).expect(400);
     expect(ErrorResponseSchema.parse(res.body).error.details?.[0]?.path).toEqual(['acceptTerms']);
   });
@@ -360,8 +364,6 @@ describe('auth and accounts (e2e)', () => {
       .set(bearer(session.accessToken))
       .send({ currentPassword: PASSWORD, newPassword: NEW_PASSWORD })
       .expect(403);
-    expect(ErrorResponseSchema.parse(denied.body).error.details?.[0]?.code).toBe(
-      'NO_PASSWORD_SET',
-    );
+    expect(ErrorResponseSchema.parse(denied.body).error.details?.[0]?.code).toBe('NO_PASSWORD_SET');
   });
 });

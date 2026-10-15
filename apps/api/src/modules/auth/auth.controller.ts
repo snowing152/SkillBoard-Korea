@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  Headers,
   HttpCode,
   HttpStatus,
   Post,
@@ -26,6 +25,7 @@ import type { Request, Response } from 'express';
 import { ZodSerializerDto } from 'nestjs-zod';
 import type { AuthenticatedUser } from '../../common/auth/authenticated-user.js';
 import { CurrentUser, Public } from '../../common/auth/decorators.js';
+import { UserAgent } from '../../common/http/user-agent.decorator.js';
 import { AuthService } from './auth.service.js';
 import { AuthSessionDto } from './dto/auth-session.dto.js';
 import { ExchangeDto } from './dto/exchange.dto.js';
@@ -57,10 +57,7 @@ export class AuthController {
   @ZodSerializerDto(AuthSessionDto)
   @ApiCreatedResponse({ type: AuthSessionDto })
   @ApiConflictResponse({ description: 'Email already registered' })
-  register(
-    @Body() body: RegisterDto,
-    @Headers('user-agent') userAgent?: string,
-  ): Promise<AuthSession> {
+  register(@Body() body: RegisterDto, @UserAgent() userAgent?: string): Promise<AuthSession> {
     return this.auth.register(body, userAgent);
   }
 
@@ -69,7 +66,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ZodSerializerDto(AuthSessionDto)
   @ApiOkResponse({ type: AuthSessionDto })
-  login(@Body() body: LoginDto, @Headers('user-agent') userAgent?: string): Promise<AuthSession> {
+  login(@Body() body: LoginDto, @UserAgent() userAgent?: string): Promise<AuthSession> {
     return this.auth.login(body, userAgent);
   }
 
@@ -78,10 +75,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ZodSerializerDto(AuthSessionDto)
   @ApiOkResponse({ type: AuthSessionDto })
-  refresh(
-    @Body() body: RefreshDto,
-    @Headers('user-agent') userAgent?: string,
-  ): Promise<AuthSession> {
+  refresh(@Body() body: RefreshDto, @UserAgent() userAgent?: string): Promise<AuthSession> {
     return this.auth.refresh(body.refreshToken, userAgent);
   }
 
@@ -163,10 +157,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ZodSerializerDto(AuthSessionDto)
   @ApiOkResponse({ type: AuthSessionDto })
-  exchange(
-    @Body() body: ExchangeDto,
-    @Headers('user-agent') userAgent?: string,
-  ): Promise<AuthSession> {
+  exchange(@Body() body: ExchangeDto, @UserAgent() userAgent?: string): Promise<AuthSession> {
     return this.auth.exchange(body.code, userAgent);
   }
 }

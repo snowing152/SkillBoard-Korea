@@ -10,8 +10,6 @@ export const SafePathSchema = z
   .string()
   .max(300)
   .regex(/^\/(?![/\\])\S*$/, 'Must be a relative path on this site')
-  .refine(
-    (value) => ![...value].some((char) => char.charCodeAt(0) < 0x20 || char.charCodeAt(0) === 0x7f),
-    'Must not contain control characters',
-  );
+  // `\p{Cc}` = every control character (U+0000-001F, U+007F-009F), no manual loop over the string.
+  .refine((value) => !/\p{Cc}/u.test(value), 'Must not contain control characters');
 export type SafePath = z.infer<typeof SafePathSchema>;
