@@ -9,3 +9,4 @@ apps/web/playwright-report
 apps/web/test-results
 apps/web/public/sw.js
 FABLE_BRIEF.md
+docs/design/reference
