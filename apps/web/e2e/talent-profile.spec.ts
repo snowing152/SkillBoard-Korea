@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { type APIRequestContext, expect, test } from '@playwright/test';
+import { markEmailVerified } from './db';
 
 // Spec: docs/specs/talent-profiles.md, criteria 2, 4, 5 and 6. Runs in both viewports (ADR 0010).
 // Needs the API on E2E_API_URL (playwright.config.ts starts it) with the seed applied.
@@ -14,17 +15,19 @@ const HEADLINE = 'E2E tutor for children in Seoul';
 async function registerTalent(request: APIRequestContext): Promise<string> {
   const email = `e2e-web-${randomUUID().slice(0, 8)}@skillboard.local`;
   const res = await request.post(`${API_URL}/v1/auth/register`, {
-    data: { email, password: PASSWORD, displayName: 'E2E Web Talent', role: 'TALENT' },
+    data: {
+      email,
+      password: PASSWORD,
+      displayName: 'E2E Web Talent',
+      role: 'TALENT',
+      locale: 'en',
+      acceptTerms: true,
+    },
   });
   expect(res.status()).toBe(201);
-  // Terms and privacy are accepted at sign-up (the `accounts` spec); until then, do it here so the
-  // flow under test is not interrupted by /consent. The visa disclaimer is part of this flow.
-  const { accessToken } = (await res.json()) as { accessToken: string };
-  const accepted = await request.post(`${API_URL}/v1/me/consents`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-    data: { documents: ['TERMS', 'PRIVACY'], locale: 'en' },
-  });
-  expect(accepted.status()).toBe(200);
+  // A published profile is public only once the owner's email is verified (accounts spec); the link
+  // flow has its own tests, so this prerequisite is set directly.
+  await markEmailVerified(email);
   return email;
 }
 

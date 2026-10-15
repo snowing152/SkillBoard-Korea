@@ -15,7 +15,8 @@
     "myProfile": "내 프로필",
     "myAccount": "내 계정",
     "label": "주 메뉴",
-    "back": "인재 목록으로 돌아가기"
+    "back": "인재 목록으로 돌아가기",
+    "signUp": "회원가입"
   },
   "loading": "불러오는 중…",
   "errors": {
@@ -46,7 +47,9 @@
     "home": "홈",
     "talents": "둘러보기",
     "profile": "프로필",
-    "account": "계정"
+    "account": "계정",
+    "signIn": "로그인",
+    "signUp": "가입"
   },
   "wakingUp": "잠시 쉬고 있던 서버를 깨우는 중입니다. 첫 로딩은 최대 1분까지 걸릴 수 있습니다."
 }

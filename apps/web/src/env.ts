@@ -7,11 +7,14 @@ import { z } from 'zod';
 const EnvSchema = z.object({
   NEXT_PUBLIC_API_URL: z.url(),
   API_URL: z.url(),
+  /** Whether the sign-in and sign-up pages render the Google button (the API needs its own Google env). */
+  NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: z.enum(['true', 'false']).default('false'),
 });
 
 const parsed = EnvSchema.safeParse({
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001',
   API_URL: process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001',
+  NEXT_PUBLIC_GOOGLE_AUTH_ENABLED: process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED,
 });
 
 if (!parsed.success) {

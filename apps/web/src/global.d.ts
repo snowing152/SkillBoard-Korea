@@ -1,4 +1,5 @@
 import type { routing } from '@/i18n/routing';
+import type account from '../messages/en/account.json';
 import type auth from '../messages/en/auth.json';
 import type common from '../messages/en/common.json';
 import type home from '../messages/en/home.json';
@@ -14,6 +15,7 @@ declare module 'next-intl' {
       common: typeof common;
       home: typeof home;
       auth: typeof auth;
+      account: typeof account;
       profile: typeof profile;
       reference: typeof reference;
       legal: typeof legal;
