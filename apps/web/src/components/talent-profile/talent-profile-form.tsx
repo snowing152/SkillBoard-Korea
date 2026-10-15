@@ -28,7 +28,6 @@ import { NativeSelect } from '@/components/ui/native-select';
 import { Textarea } from '@/components/ui/textarea';
 import { Link, useRouter } from '@/i18n/navigation';
 import { type ActionFailure, errorMessageKey } from '@/lib/api-errors';
-import { cn } from '@/lib/utils';
 
 /**
  * What the form holds while the user types. The schema wants `acknowledgeVisaDisclaimer: true`, but an
@@ -58,6 +57,10 @@ export const EMPTY_TALENT_PROFILE: TalentProfileFormValues = {
   contactMethods: [],
   acknowledgeVisaDisclaimer: false,
 };
+
+/** One white card per group of fields; legends are floated so they sit inside the card padding. */
+const GROUP = 'flex min-w-0 flex-col gap-4 rounded-card bg-card p-4 sm:p-5';
+const LEGEND = 'float-left mb-1 w-full text-title-sm font-semibold';
 
 /** `<select>` and `<input>` give '' for "nothing"; the schema wants null. */
 const emptyToNull = (v: unknown) => (v === '' ? null : v);
@@ -112,102 +115,108 @@ export function TalentProfileForm({ mode, catalog, defaultValues }: Props) {
   ) => (error ? (error.type === 'custom' ? t('errors.duplicate') : error.message) : null);
 
   return (
-    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-6">
-      <FieldBlock
-        label={t('headline.label')}
-        hint={t('headline.hint', { max: LIMITS.headlineMax })}
-        error={errors.headline?.message}
-        htmlFor="headline"
-      >
-        <Input id="headline" maxLength={LIMITS.headlineMax} {...register('headline')} />
-      </FieldBlock>
+    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-stack">
+      <div className={GROUP}>
+        <FieldBlock
+          label={t('headline.label')}
+          hint={t('headline.hint', { max: LIMITS.headlineMax })}
+          error={errors.headline?.message}
+          htmlFor="headline"
+        >
+          <Input id="headline" maxLength={LIMITS.headlineMax} {...register('headline')} />
+        </FieldBlock>
 
-      <FieldBlock
-        label={t('description.label')}
-        hint={t('description.hint', { min: LIMITS.descriptionMin, max: LIMITS.descriptionMax })}
-        error={errors.description?.message}
-        htmlFor="description"
-      >
-        <Textarea
-          id="description"
-          rows={6}
-          maxLength={LIMITS.descriptionMax}
-          {...register('description')}
-        />
-      </FieldBlock>
-
-      <FieldBlock label={t('city.label')} error={errors.cityCode?.message} htmlFor="cityCode">
-        <NativeSelect id="cityCode" {...register('cityCode', { setValueAs: emptyToNull })}>
-          <option value="">{t('city.none')}</option>
-          {CITY_CODES.map((code) => (
-            <option key={code} value={code}>
-              {tRef(`cities.${code}`)}
-            </option>
-          ))}
-        </NativeSelect>
-      </FieldBlock>
-
-      <FieldBlock label={t('workMode.label')} error={errors.workMode?.message} htmlFor="workMode">
-        <NativeSelect id="workMode" {...register('workMode')}>
-          {WORK_MODES.map((mode) => (
-            <option key={mode} value={mode}>
-              {tRef(`workModes.${mode}`)}
-            </option>
-          ))}
-        </NativeSelect>
-      </FieldBlock>
-
-      <FieldBlock label={t('visaType.label')} error={errors.visaType?.message} htmlFor="visaType">
-        <NativeSelect id="visaType" {...register('visaType', { setValueAs: emptyToNull })}>
-          <option value="">{t('visaType.none')}</option>
-          {VISA_TYPES.map((code) => (
-            <option key={code} value={code}>
-              {tRef(`visaTypes.${code}`)}
-            </option>
-          ))}
-        </NativeSelect>
-        <VisaDisclaimer />
-      </FieldBlock>
-
-      {mode === 'create' && (
-        <div className="flex flex-col gap-2">
-          <Controller
-            name="acknowledgeVisaDisclaimer"
-            control={control}
-            render={({ field }) => (
-              <label className="flex min-h-11 items-start gap-3">
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={(next) => {
-                    field.onChange(next);
-                  }}
-                  className="mt-1"
-                />
-                <span>{t('acknowledgeVisaDisclaimer')}</span>
-              </label>
-            )}
+        <FieldBlock
+          label={t('description.label')}
+          hint={t('description.hint', { min: LIMITS.descriptionMin, max: LIMITS.descriptionMax })}
+          error={errors.description?.message}
+          htmlFor="description"
+        >
+          <Textarea
+            id="description"
+            rows={6}
+            maxLength={LIMITS.descriptionMax}
+            {...register('description')}
           />
-          <FieldMessage error={errors.acknowledgeVisaDisclaimer?.message} />
-        </div>
-      )}
+        </FieldBlock>
+      </div>
 
-      <FieldBlock
-        label={t('videoUrl.label')}
-        hint={t('videoUrl.hint')}
-        error={errors.videoUrl?.message}
-        htmlFor="videoUrl"
-      >
-        <Input
-          id="videoUrl"
-          type="url"
-          inputMode="url"
-          {...register('videoUrl', { setValueAs: emptyToNull })}
-        />
-      </FieldBlock>
+      <div className={GROUP}>
+        <FieldBlock label={t('city.label')} error={errors.cityCode?.message} htmlFor="cityCode">
+          <NativeSelect id="cityCode" {...register('cityCode', { setValueAs: emptyToNull })}>
+            <option value="">{t('city.none')}</option>
+            {CITY_CODES.map((code) => (
+              <option key={code} value={code}>
+                {tRef(`cities.${code}`)}
+              </option>
+            ))}
+          </NativeSelect>
+        </FieldBlock>
 
-      <fieldset className="flex flex-col gap-3">
-        <legend className="font-medium">{t('skills.label')}</legend>
-        <p className="text-sm text-muted-foreground">
+        <FieldBlock label={t('workMode.label')} error={errors.workMode?.message} htmlFor="workMode">
+          <NativeSelect id="workMode" {...register('workMode')}>
+            {WORK_MODES.map((mode) => (
+              <option key={mode} value={mode}>
+                {tRef(`workModes.${mode}`)}
+              </option>
+            ))}
+          </NativeSelect>
+        </FieldBlock>
+
+        <FieldBlock label={t('visaType.label')} error={errors.visaType?.message} htmlFor="visaType">
+          <NativeSelect id="visaType" {...register('visaType', { setValueAs: emptyToNull })}>
+            <option value="">{t('visaType.none')}</option>
+            {VISA_TYPES.map((code) => (
+              <option key={code} value={code}>
+                {tRef(`visaTypes.${code}`)}
+              </option>
+            ))}
+          </NativeSelect>
+          <VisaDisclaimer />
+        </FieldBlock>
+
+        {mode === 'create' && (
+          <div className="flex flex-col gap-2">
+            <Controller
+              name="acknowledgeVisaDisclaimer"
+              control={control}
+              render={({ field }) => (
+                <label className="flex min-h-11 items-start gap-3 text-body-sm">
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={(next) => {
+                      field.onChange(next);
+                    }}
+                    className="mt-1"
+                  />
+                  <span>{t('acknowledgeVisaDisclaimer')}</span>
+                </label>
+              )}
+            />
+            <FieldMessage error={errors.acknowledgeVisaDisclaimer?.message} />
+          </div>
+        )}
+      </div>
+
+      <div className={GROUP}>
+        <FieldBlock
+          label={t('videoUrl.label')}
+          hint={t('videoUrl.hint')}
+          error={errors.videoUrl?.message}
+          htmlFor="videoUrl"
+        >
+          <Input
+            id="videoUrl"
+            type="url"
+            inputMode="url"
+            {...register('videoUrl', { setValueAs: emptyToNull })}
+          />
+        </FieldBlock>
+      </div>
+
+      <fieldset className={GROUP}>
+        <legend className={LEGEND}>{t('skills.label')}</legend>
+        <p className="-mt-3 text-label text-muted-foreground">
           {t('skills.hint', { max: LIMITS.skillsMax })}
         </p>
         <Controller
@@ -217,11 +226,13 @@ export function TalentProfileForm({ mode, catalog, defaultValues }: Props) {
             <div className="flex flex-col gap-4">
               {catalog.categories.map((category) => (
                 <div key={category.id} className="flex flex-col gap-1">
-                  <p className="text-sm font-medium">{localizedName(category.names, locale)}</p>
+                  <p className="text-label font-semibold text-foreground-secondary">
+                    {localizedName(category.names, locale)}
+                  </p>
                   {category.skills.map((skill) => {
                     const checked = field.value.includes(skill.id);
                     return (
-                      <label key={skill.id} className="flex min-h-11 items-center gap-3">
+                      <label key={skill.id} className="flex min-h-11 items-center gap-3 text-body">
                         <Checkbox
                           checked={checked}
                           onCheckedChange={(next) => {
@@ -244,10 +255,13 @@ export function TalentProfileForm({ mode, catalog, defaultValues }: Props) {
         <FieldMessage error={listError(errors.skillIds?.root ?? errors.skillIds)} />
       </fieldset>
 
-      <fieldset className="flex flex-col gap-3">
-        <legend className="font-medium">{t('languages.label')}</legend>
+      <fieldset className={GROUP}>
+        <legend className={LEGEND}>{t('languages.label')}</legend>
         {languages.fields.map((row, index) => (
-          <div key={row.id} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <div
+            key={row.id}
+            className="flex flex-col gap-2 border-b pb-4 sm:flex-row sm:items-end sm:border-0 sm:pb-0"
+          >
             <FieldBlock label={t('languages.language')} htmlFor={`languages-${index}-code`}>
               <NativeSelect
                 id={`languages-${index}-code`}
@@ -275,7 +289,7 @@ export function TalentProfileForm({ mode, catalog, defaultValues }: Props) {
             <Button
               type="button"
               variant="ghost"
-              className="min-h-11"
+              className="self-end text-danger sm:self-auto"
               onClick={() => {
                 languages.remove(index);
               }}
@@ -288,7 +302,7 @@ export function TalentProfileForm({ mode, catalog, defaultValues }: Props) {
         <Button
           type="button"
           variant="outline"
-          className="min-h-11 self-start"
+          className="self-start"
           disabled={languages.fields.length >= LIMITS.languagesMax}
           onClick={() => {
             languages.append({ languageCode: 'ko', level: 'BASIC' });
@@ -298,10 +312,13 @@ export function TalentProfileForm({ mode, catalog, defaultValues }: Props) {
         </Button>
       </fieldset>
 
-      <fieldset className="flex flex-col gap-3">
-        <legend className="font-medium">{t('portfolio.label')}</legend>
+      <fieldset className={GROUP}>
+        <legend className={LEGEND}>{t('portfolio.label')}</legend>
         {portfolioLinks.fields.map((row, index) => (
-          <div key={row.id} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <div
+            key={row.id}
+            className="flex flex-col gap-2 border-b pb-4 sm:flex-row sm:items-end sm:border-0 sm:pb-0"
+          >
             <FieldBlock
               label={t('portfolio.url')}
               htmlFor={`portfolio-${index}-url`}
@@ -324,7 +341,7 @@ export function TalentProfileForm({ mode, catalog, defaultValues }: Props) {
             <Button
               type="button"
               variant="ghost"
-              className="min-h-11"
+              className="self-end text-danger sm:self-auto"
               onClick={() => {
                 portfolioLinks.remove(index);
               }}
@@ -337,7 +354,7 @@ export function TalentProfileForm({ mode, catalog, defaultValues }: Props) {
         <Button
           type="button"
           variant="outline"
-          className="min-h-11 self-start"
+          className="self-start"
           disabled={portfolioLinks.fields.length >= LIMITS.portfolioLinksMax}
           onClick={() => {
             portfolioLinks.append({ url: '', label: null });
@@ -347,11 +364,14 @@ export function TalentProfileForm({ mode, catalog, defaultValues }: Props) {
         </Button>
       </fieldset>
 
-      <fieldset className="flex flex-col gap-3">
-        <legend className="font-medium">{t('contacts.label')}</legend>
-        <p className="text-sm text-muted-foreground">{t('contacts.hint')}</p>
+      <fieldset className={GROUP}>
+        <legend className={LEGEND}>{t('contacts.label')}</legend>
+        <p className="-mt-3 text-label text-muted-foreground">{t('contacts.hint')}</p>
         {contactMethods.fields.map((row, index) => (
-          <div key={row.id} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <div
+            key={row.id}
+            className="flex flex-col gap-2 border-b pb-4 sm:flex-row sm:items-end sm:border-0 sm:pb-0"
+          >
             <FieldBlock label={t('contacts.type')} htmlFor={`contacts-${index}-type`}>
               <NativeSelect
                 id={`contacts-${index}-type`}
@@ -378,7 +398,7 @@ export function TalentProfileForm({ mode, catalog, defaultValues }: Props) {
             <Button
               type="button"
               variant="ghost"
-              className="min-h-11"
+              className="self-end text-danger sm:self-auto"
               onClick={() => {
                 contactMethods.remove(index);
               }}
@@ -391,7 +411,7 @@ export function TalentProfileForm({ mode, catalog, defaultValues }: Props) {
         <Button
           type="button"
           variant="outline"
-          className="min-h-11 self-start"
+          className="self-start"
           disabled={contactMethods.fields.length >= LIMITS.contactMethodsMax}
           onClick={() => {
             contactMethods.append({ type: 'EMAIL', value: '' });
@@ -407,13 +427,13 @@ export function TalentProfileForm({ mode, catalog, defaultValues }: Props) {
         </Alert>
       )}
 
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Button type="submit" disabled={pending} className="min-h-11">
+      <div className="flex flex-col gap-2 pt-2 sm:flex-row-reverse sm:justify-start">
+        <Button type="submit" size="lg" disabled={pending}>
           {t(`submit.${mode}`)}
         </Button>
         <Link
           href="/me/talent-profile"
-          className={cn(buttonVariants({ variant: 'outline' }), 'min-h-11')}
+          className={buttonVariants({ variant: 'outline', size: 'lg' })}
         >
           {t('cancel')}
         </Link>
@@ -436,10 +456,10 @@ function FieldBlock({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex w-full flex-col gap-2">
+    <div className="flex w-full min-w-0 flex-col gap-1.5">
       <Label htmlFor={htmlFor}>{label}</Label>
       {children}
-      {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
+      {hint && <p className="text-label text-muted-foreground">{hint}</p>}
       <FieldMessage error={error} />
     </div>
   );
@@ -448,7 +468,7 @@ function FieldBlock({
 function FieldMessage({ error }: { error?: string | null | undefined }) {
   if (!error) return null;
   return (
-    <p role="alert" className="text-sm text-destructive">
+    <p role="alert" className="text-label font-medium text-danger">
       {error}
     </p>
   );

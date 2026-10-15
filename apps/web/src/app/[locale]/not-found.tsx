@@ -1,15 +1,29 @@
+import { SearchXIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { PageContainer } from '@/components/ds/page';
+import { EmptyState } from '@/components/ds/states';
+import { AppShell } from '@/components/shell/app-shell';
+import { buttonVariants } from '@/components/ui/button';
 import { Link } from '@/i18n/navigation';
 
+// Rendered outside the (main) layout (it also catches 404s from /t/[slug]), so it brings the shell.
 export default function NotFound() {
   const t = useTranslations('common.notFound');
   return (
-    <main className="mx-auto max-w-xl p-4">
-      <h1 className="text-2xl font-bold">{t('title')}</h1>
-      <p className="text-muted">{t('body')}</p>
-      <Link href="/" className="underline">
-        {t('home')}
-      </Link>
-    </main>
+    <AppShell>
+      <PageContainer>
+        <EmptyState
+          as="h1"
+          icon={<SearchXIcon />}
+          title={t('title')}
+          body={t('body')}
+          action={
+            <Link href="/" className={buttonVariants()}>
+              {t('home')}
+            </Link>
+          }
+        />
+      </PageContainer>
+    </AppShell>
   );
 }

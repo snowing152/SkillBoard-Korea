@@ -10,8 +10,9 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Talent marketplace for foreigners in Korea',
     start_url: '/',
     display: 'standalone',
-    background_color: '#ffffff',
-    theme_color: '#1d4ed8',
+    // Manifest colors cannot read CSS variables: keep in sync with --background and --primary in globals.css.
+    background_color: '#f4f5f3',
+    theme_color: '#0e6b5c',
     icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
   };
 }

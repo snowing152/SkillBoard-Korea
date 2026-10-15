@@ -51,16 +51,16 @@ export function SignInForm() {
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1.5">
         <Label htmlFor="email">{t('email')}</Label>
         <Input id="email" type="email" autoComplete="email" {...register('email')} />
         {errors.email && (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-label font-medium text-danger">
             {errors.email.message}
           </p>
         )}
       </div>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1.5">
         <Label htmlFor="password">{t('password')}</Label>
         <Input
           id="password"
@@ -69,7 +69,7 @@ export function SignInForm() {
           {...register('password')}
         />
         {errors.password && (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-label font-medium text-danger">
             {errors.password.message}
           </p>
         )}
@@ -83,7 +83,7 @@ export function SignInForm() {
           </AlertDescription>
         </Alert>
       )}
-      <Button type="submit" disabled={pending} className="min-h-11 w-full">
+      <Button type="submit" size="lg" disabled={pending} className="w-full">
         {t('submit')}
       </Button>
     </form>

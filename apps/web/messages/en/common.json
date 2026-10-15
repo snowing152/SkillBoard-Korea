@@ -4,7 +4,8 @@
     "label": "Language",
     "en": "English",
     "ko": "한국어",
-    "ru": "Русский"
+    "ru": "Русский",
+    "change": "Change language (current: {current})"
   },
   "nav": {
     "home": "Home",
@@ -12,7 +13,9 @@
     "signIn": "Sign in",
     "signOut": "Sign out",
     "myProfile": "My profile",
-    "myAccount": "My account"
+    "myAccount": "My account",
+    "label": "Main",
+    "back": "Back to talent list"
   },
   "loading": "Loading…",
   "errors": {
@@ -37,5 +40,13 @@
   "offline": {
     "title": "You are offline",
     "body": "Check your connection and try again. Your saved pages will load once you are back online."
-  }
+  },
+  "bottomNav": {
+    "label": "Main",
+    "home": "Home",
+    "talents": "Browse",
+    "profile": "Profile",
+    "account": "Account"
+  },
+  "wakingUp": "The server is waking up after a pause. The first load can take up to a minute."
 }

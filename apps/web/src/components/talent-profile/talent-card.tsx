@@ -1,7 +1,7 @@
 import { localizedName, type TalentCard as TalentCardData } from '@skillboard/shared';
 import { getLocale, getTranslations } from 'next-intl/server';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar } from '@/components/ds/avatar';
+import { SkillTag, SkillTagList } from '@/components/ds/skill-tag';
 import { Link } from '@/i18n/navigation';
 
 /** List item for /talents and, later, search results. Whole card is one link (thumb-friendly). */
@@ -10,24 +10,28 @@ export async function TalentCard({ talent }: { talent: TalentCardData }) {
   const locale = await getLocale();
 
   return (
-    <Link href={`/t/${talent.slug}`} className="block">
-      <Card>
-        <CardHeader>
-          <CardTitle>{talent.headline}</CardTitle>
-          <p className="text-sm text-muted-foreground">
+    <Link
+      href={`/t/${talent.slug}`}
+      className="flex flex-col gap-stack rounded-card bg-card p-4 text-foreground no-underline transition-shadow hover:ring-1 hover:ring-input"
+    >
+      <div className="flex items-start gap-3">
+        <Avatar name={talent.displayName} photoUrl={talent.photoUrl} />
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <h2 className="text-body font-semibold wrap-break-word">{talent.headline}</h2>
+          <p className="text-label text-foreground-secondary">
             {talent.displayName}
             {talent.cityCode && ` · ${tRef(`cities.${talent.cityCode}`)}`}
             {` · ${tRef(`workModes.${talent.workMode}`)}`}
           </p>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
+        </div>
+      </div>
+      {talent.skills.length > 0 && (
+        <SkillTagList>
           {talent.skills.map((skill) => (
-            <Badge key={skill.id} variant="secondary">
-              {localizedName(skill.names, locale)}
-            </Badge>
+            <SkillTag key={skill.id}>{localizedName(skill.names, locale)}</SkillTag>
           ))}
-        </CardContent>
-      </Card>
+        </SkillTagList>
+      )}
     </Link>
   );
 }
