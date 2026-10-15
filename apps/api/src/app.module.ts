@@ -6,6 +6,7 @@ import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
 import { JwtAuthGuard } from './common/auth/jwt-auth.guard.js';
 import { RolesGuard } from './common/auth/roles.guard.js';
 import { validateEnv } from './common/config/env.js';
+import { MailModule } from './common/mail/mail.module.js';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import { PrismaModule } from './common/prisma/prisma.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
@@ -20,6 +21,7 @@ import { TalentProfilesModule } from './modules/talent-profiles/talent-profiles.
     // Global limit: 100 requests / minute / IP (ADR 0018). Stricter limits go on the specific routes.
     ThrottlerModule.forRoot({ throttlers: [{ ttl: 60_000, limit: 100 }] }),
     PrismaModule,
+    MailModule,
     HealthModule,
     AuthModule,
     ConsentsModule,

@@ -5,3 +5,4 @@ import 'dotenv/config';
 process.env.NODE_ENV ??= 'test';
 process.env.DATABASE_URL ??= 'postgresql://skillboard:skillboard@localhost:5432/skillboard';
 process.env.JWT_ACCESS_SECRET ??= 'e2e-only-secret-not-used-anywhere-else-0123456789';
+process.env.JWT_REFRESH_PEPPER ??= 'e2e-only-refresh-pepper-not-used-anywhere-0123';

@@ -48,26 +48,34 @@ describe('consents (e2e)', () => {
     }
   });
 
-  it('shows a new account with terms and privacy pending', async () => {
+  it('records terms and privacy at sign-up, in the language of the sign-up page', async () => {
     const reg = await request(server)
       .post('/v1/auth/register')
-      .send({ email: EMAIL, password: 'Password123!', displayName: 'E2E Consent', role: 'CLIENT' })
+      .send({
+        email: EMAIL,
+        password: 'Password123!',
+        displayName: 'E2E Consent',
+        role: 'CLIENT',
+        locale: 'ru',
+        acceptTerms: true,
+      })
       .expect(201);
     const session = AuthSessionSchema.parse(reg.body);
     token = session.accessToken;
     userId = session.user.id;
-    expect(session.user.pendingConsents).toEqual(['TERMS', 'PRIVACY']);
+    expect(session.user.pendingConsents).toEqual([]);
 
     const res = await request(server)
       .get('/v1/me/consents')
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
     const list = ConsentListSchema.parse(res.body);
-    expect(list.items).toEqual([]);
-    expect(list.pending).toEqual(['TERMS', 'PRIVACY']);
+    expect(list.items.map((i) => i.type).sort()).toEqual(['PRIVACY', 'TERMS']);
+    expect(list.items.every((i) => i.locale === 'ru')).toBe(true);
+    expect(list.pending).toEqual([]);
   });
 
-  it('accepts documents with the current version and language, and is idempotent', async () => {
+  it('accepting the current versions again is a no-op that keeps the first language', async () => {
     const accept = () =>
       request(server)
         .post('/v1/me/consents')

@@ -3,3 +3,4 @@
 // The app is created but never listens; Prisma connects lazily and the JWT secret never signs anything.
 process.env.DATABASE_URL ??= 'postgresql://openapi:openapi@localhost:5432/openapi';
 process.env.JWT_ACCESS_SECRET ??= 'openapi-generation-only-secret-never-signs-anything';
+process.env.JWT_REFRESH_PEPPER ??= 'openapi-generation-only-pepper-never-hashes-anything';

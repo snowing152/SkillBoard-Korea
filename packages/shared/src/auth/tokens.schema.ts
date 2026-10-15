@@ -1,0 +1,44 @@
+import { z } from 'zod';
+import { LocaleSchema } from '../i18n/locales.js';
+import { SIGNUP_ROLES } from './roles.js';
+import { EmailSchema, PasswordSchema } from './auth.schema.js';
+import { SafePathSchema } from './safe-path.js';
+
+/** An opaque random token (refresh, verification, reset, exchange code) as it travels in a body. */
+const OpaqueTokenSchema = z.string().min(20).max(200);
+
+export const RefreshSchema = z.object({ refreshToken: OpaqueTokenSchema });
+export type Refresh = z.infer<typeof RefreshSchema>;
+
+/** `all: true` signs out every device. Without a token and without `all` there is nothing to revoke. */
+export const LogoutSchema = z.object({
+  refreshToken: OpaqueTokenSchema.optional(),
+  all: z.boolean().default(false),
+});
+export type Logout = z.infer<typeof LogoutSchema>;
+
+/** Email verification link token. */
+export const TokenSchema = z.object({ token: OpaqueTokenSchema });
+export type TokenInput = z.infer<typeof TokenSchema>;
+
+export const PasswordResetRequestSchema = z.object({ email: EmailSchema });
+export type PasswordResetRequest = z.infer<typeof PasswordResetRequestSchema>;
+
+export const PasswordResetConfirmSchema = z.object({
+  token: OpaqueTokenSchema,
+  password: PasswordSchema,
+});
+export type PasswordResetConfirm = z.infer<typeof PasswordResetConfirmSchema>;
+
+/** The single-use 60 s code the Google callback puts in the redirect URL (never a token). */
+export const ExchangeSchema = z.object({ code: OpaqueTokenSchema });
+export type Exchange = z.infer<typeof ExchangeSchema>;
+
+/** Query of GET /v1/auth/google. `acceptTerms` is the string `'true'` because it travels in a URL. */
+export const GoogleStartQuerySchema = z.object({
+  role: z.enum(SIGNUP_ROLES),
+  locale: LocaleSchema,
+  acceptTerms: z.literal('true'),
+  next: SafePathSchema.optional(),
+});
+export type GoogleStartQuery = z.infer<typeof GoogleStartQuerySchema>;
