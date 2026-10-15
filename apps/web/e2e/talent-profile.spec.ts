@@ -80,7 +80,8 @@ test('talent signs in, creates a draft, publishes it and gets a public page', as
 
   await page.getByRole('link', { name: 'View public page' }).click();
   await expect(page).toHaveURL(new RegExp(`${publicUrl ?? ''}$`));
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(HEADLINE);
-  await expect(page.getByText('E2E Web Talent')).toBeVisible();
+  // M4 layout: the name is the page heading, the headline sits under it.
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('E2E Web Talent');
+  await expect(page.getByText(HEADLINE, { exact: true })).toBeVisible();
   await expect(page.getByText(email)).toHaveCount(0); // contact methods never render publicly
 });

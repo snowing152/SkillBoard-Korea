@@ -4,12 +4,15 @@ Read `AGENTS.md` first. These rules apply only inside the web app.
 
 ## Layout
 
-- `src/app/[locale]/…` pages. Public pages (home, search, `/t/[slug]`) are Server Components that fetch
-  through `src/lib/api.ts` (`@skillboard/api-client`). Forms and interactive parts are Client Components
-  (`'use client'`) in `src/components/<feature>/`.
+- `src/app/[locale]/(main)/…` pages: the route group adds the app shell (header, footer, phone bottom
+  nav). Only full-screen pages with their own header (`/t/[slug]`) live outside it. Public pages (home,
+  search, `/t/[slug]`) are Server Components that fetch through `src/lib/api.ts`
+  (`@skillboard/api-client`). Forms and interactive parts are Client Components (`'use client'`) in
+  `src/components/<feature>/`.
 - `src/components/ui/` is shadcn/ui 4 (Base UI primitives, `components.json`), owned in repo. Add one
-  with `pnpm dlx shadcn@4.21.4 add <name>` from `apps/web` and pin the versions it adds. Sonnet uses the
-  components unstyled; Opus restyles tokens in `src/app/globals.css` and `components/ui` only.
+  with `pnpm dlx shadcn@4.21.4 add <name>` from `apps/web`, pin the versions it adds, restyle it to the
+  tokens. `src/components/ds/` holds the design-system components, `src/components/shell/` the app chrome
+  (`docs/design/README.md`, ADR 0023).
 - `src/actions/<feature>.ts` are the Server Actions (`'use server'`): validate with the shared schema,
   read the session, call one endpoint with `apiAsUser()` from `src/lib/api.ts`, map the error with
   `toActionFailure()`, then `redirect`/`revalidatePath`. No business rules (ADR 0019).
@@ -23,6 +26,15 @@ Read `AGENTS.md` first. These rules apply only inside the web app.
   it, never edit it.
 
 ## Rules
+
+- **Design system only.** New pages and feature components are built from `components/ds/`,
+  `components/ui/` and `components/shell/`, styled with token utilities (`bg-primary`, `text-label`,
+  `rounded-card`, `px-gutter`, `max-w-content` …). No raw colors (hex, `rgb()`, Tailwind palette colors
+  like `bg-blue-600`), no arbitrary values (`text-[13px]`, `p-[18px]`), no ad-hoc shadows or gradients.
+  Every page's `<main>` is `PageContainer`, its title `PageHeader`; data pages use `EmptyState`,
+  `ErrorState` and `LoadingState`. Missing a token or component? Add it to `globals.css` (+ `cn` config in
+  `src/lib/utils.ts`) or `components/ds/` first, documented in `docs/design/README.md`.
+- Import `cn` from `@/lib/utils`, never from `cn` directly: only the configured one knows the tokens.
 
 - Navigate only with `Link`, `redirect`, `usePathname`, `useRouter` from `@/i18n/navigation`, never from
   `next/link` or `next/navigation`, so locale prefixes stay right.
@@ -43,7 +55,7 @@ Read `AGENTS.md` first. These rules apply only inside the web app.
 - Dates and numbers through next-intl formatters (time zone Asia/Seoul is configured). No manual
   timezone math.
 - Mobile-first Tailwind: base classes are the phone layout, `sm:`/`md:` add desktop. Touch targets at
-  least 44 px. Check at 390 px before desktop.
+  least 44 px. Check at 375 px before desktop.
 - Every data-driven page defines loading, empty and error states (the spec lists them); use `loading.tsx`
   and `error.tsx` per route where it helps.
 - Public profile pages render on the server (SEO) and return 404 for draft or hidden profiles.

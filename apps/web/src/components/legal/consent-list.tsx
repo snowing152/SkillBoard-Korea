@@ -1,5 +1,6 @@
 import type { ConsentList as ConsentListData } from '@skillboard/shared';
 import { useFormatter, useTranslations } from 'next-intl';
+import { Section } from '@/components/ds/page';
 
 /** The user's consent history, newest first. Dates go through next-intl (Asia/Seoul, ADR 0017). */
 export function ConsentList({ items }: { items: ConsentListData['items'] }) {
@@ -7,17 +8,18 @@ export function ConsentList({ items }: { items: ConsentListData['items'] }) {
   const format = useFormatter();
 
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold">{t('list.title')}</h2>
+    <Section title={t('list.title')}>
       {items.length === 0 ? (
-        <p className="text-muted-foreground">{t('list.empty')}</p>
+        <p className="text-body-sm text-muted-foreground">{t('list.empty')}</p>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col divide-y">
           {items.map((item) => (
-            <li key={`${item.type}-${item.version}`} className="rounded-lg border p-3">
-              <span className="font-medium">{documentTitle(t, item.type)}</span>
-              <span className="text-muted-foreground">
-                {' · '}
+            <li
+              key={`${item.type}-${item.version}`}
+              className="flex flex-col gap-0.5 py-3 first:pt-0 last:pb-0"
+            >
+              <span className="text-body-sm font-medium">{documentTitle(t, item.type)}</span>
+              <span className="text-label text-muted-foreground">
                 {item.version}
                 {' · '}
                 {t('list.locale')}: {item.locale}
@@ -31,7 +33,7 @@ export function ConsentList({ items }: { items: ConsentListData['items'] }) {
           ))}
         </ul>
       )}
-    </section>
+    </Section>
   );
 }
 

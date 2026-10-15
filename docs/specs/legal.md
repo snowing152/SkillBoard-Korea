@@ -83,7 +83,7 @@ history is kept. Seed: every seed user gets `TERMS` and `PRIVACY` rows, every se
 | `/legal/visa`    | Server page, static                                                                                                                              | content only, HiKorea link opens in a new tab                                                                          |
 | `/consent`       | Server page (session required) reads `?next=` (`SafePathSchema`, `accounts`) + Client form `components/legal/consent-form.tsx`                   | one checkbox per pending document with its link and version date; submitting; success → `next` or `/me/talent-profile` |
 | `/me/account`    | this PR creates a minimal Server page (session required) holding only `components/legal/consent-list.tsx`; `accounts` adds its sections above it | loading, list `type · version · locale · date`, empty text                                                             |
-| `/me/*` layout   | `app/[locale]/me/layout.tsx` (created here, extended by `accounts`)                                                                              | `pendingConsents` not empty → `redirect('/consent?next=<current path>')`; `/consent` itself is outside `/me`           |
+| `/me/*` layout   | `app/[locale]/(main)/me/layout.tsx` (created here, extended by `accounts`)                                                                       | `pendingConsents` not empty → `redirect('/consent?next=<current path>')`; `/consent` itself is outside `/me`           |
 
 - The sign-in action (`accounts`) and `/auth/callback` also redirect to `/consent?next=` when
   `pendingConsents` is not empty; this spec adds that line to the existing `signIn` action.
@@ -117,7 +117,7 @@ sections: [{ heading, paragraphs: string[] }] }`. Pages render with `t.raw('priv
   (`talent-profile-form.tsx`, with the required checkbox `profile.form.acknowledgeVisaDisclaimer`), the
   public profile next to the visa badge (`talent-profile-view.tsx`), and the search filter sheet
   (`search` spec).
-- `components/site-footer.tsx` rendered in `app/[locale]/layout.tsx`: three links + language switcher
+- `components/shell/site-footer.tsx` rendered by `AppShell` and the public profile: three legal links
   slot. Phone: links stacked, 44 px rows; desktop: one row.
 - shadcn: checkbox (already present). No new primitives.
 

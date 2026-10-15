@@ -85,7 +85,19 @@
     "languages": "Languages",
     "portfolio": "Portfolio",
     "video": "Watch video",
-    "publishedAt": "Published {date, date, medium}"
+    "publishedAt": "Published {date, date, medium}",
+    "about": "About",
+    "sectionsLabel": "Profile sections",
+    "facts": {
+      "location": "Location",
+      "format": "Format",
+      "visa": "Visa (self-declared)",
+      "languages": "Languages"
+    },
+    "notSpecified": "Not specified",
+    "watchIntro": "Watch intro",
+    "showContacts": "Show contacts",
+    "portfolioEmpty": "No portfolio links yet."
   },
   "list": {
     "title": "Talent",

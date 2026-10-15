@@ -85,7 +85,19 @@
     "languages": "Языки",
     "portfolio": "Портфолио",
     "video": "Смотреть видео",
-    "publishedAt": "Опубликовано {date, date, medium}"
+    "publishedAt": "Опубликовано {date, date, medium}",
+    "about": "О себе",
+    "sectionsLabel": "Разделы профиля",
+    "facts": {
+      "location": "Город",
+      "format": "Формат работы",
+      "visa": "Виза (со слов специалиста)",
+      "languages": "Языки"
+    },
+    "notSpecified": "Не указано",
+    "watchIntro": "Смотреть видео",
+    "showContacts": "Показать контакты",
+    "portfolioEmpty": "Ссылок на портфолио пока нет."
   },
   "list": {
     "title": "Специалисты",

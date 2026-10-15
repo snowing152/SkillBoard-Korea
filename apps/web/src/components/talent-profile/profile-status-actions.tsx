@@ -23,7 +23,6 @@ export function ProfileStatusActions({ status }: { status: ProfileStatus }) {
       <Button
         type="button"
         variant={next === 'PUBLISHED' ? 'default' : 'outline'}
-        className="min-h-11"
         disabled={pending}
         onClick={() => {
           setFailure(null);

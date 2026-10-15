@@ -71,7 +71,9 @@ test('a user with a pending document must accept it before using /me', async ({
 
   await expect(page).toHaveURL(/\/me\/account$/);
   await expect(page.getByRole('heading', { level: 1, name: 'My account' })).toBeVisible();
-  await expect(page.getByText(/Privacy policy · 2026-10-14 · Language: en/)).toBeVisible();
+  await expect(page.getByRole('listitem').filter({ hasText: 'Privacy policy' })).toContainText(
+    '2026-10-14 · Language: en',
+  );
 });
 
 // Criterion 9: the visa sentence and its link are on the public profile, and nothing scrolls sideways

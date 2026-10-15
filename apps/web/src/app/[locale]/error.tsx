@@ -1,18 +1,30 @@
 'use client';
 
+import { TriangleAlertIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { PageContainer } from '@/components/ds/page';
+import { ErrorState } from '@/components/ds/states';
+import { AppShell } from '@/components/shell/app-shell';
 import { Button } from '@/components/ui/button';
 
 /** Catches errors thrown by any page under the locale layout (API down, unexpected error code). */
 export default function LocaleError({ reset }: { error: Error; reset: () => void }) {
   const t = useTranslations('common.errorPage');
   return (
-    <main className="mx-auto flex max-w-xl flex-col gap-4 p-4">
-      <h1 className="text-2xl font-bold">{t('title')}</h1>
-      <p className="text-muted-foreground">{t('body')}</p>
-      <Button type="button" onClick={reset} className="min-h-11 self-start">
-        {t('retry')}
-      </Button>
-    </main>
+    <AppShell>
+      <PageContainer>
+        <ErrorState
+          as="h1"
+          icon={<TriangleAlertIcon />}
+          title={t('title')}
+          body={t('body')}
+          action={
+            <Button type="button" onClick={reset}>
+              {t('retry')}
+            </Button>
+          }
+        />
+      </PageContainer>
+    </AppShell>
   );
 }

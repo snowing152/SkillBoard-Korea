@@ -8,7 +8,7 @@ export function SignOutButton() {
   const t = useTranslations('common.nav');
   return (
     <form action={signOut}>
-      <Button type="submit" variant="outline" className="min-h-11">
+      <Button type="submit" variant="ghost">
         {t('signOut')}
       </Button>
     </form>

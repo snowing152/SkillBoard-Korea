@@ -152,7 +152,8 @@
   "disclaimer": {
     "short": "Visa type is self-declared and not verified. Everyone is responsible for working within their visa.",
     "link": "Read the visa disclaimer",
-    "hikorea": "Open HiKorea (official site)"
+    "hikorea": "Open HiKorea (official site)",
+    "bar": "Visa status is self-declared. <visa>Read the visa disclaimer</visa> · <hikorea>HiKorea</hikorea>"
   },
   "consent": {
     "title": "Please accept the documents",

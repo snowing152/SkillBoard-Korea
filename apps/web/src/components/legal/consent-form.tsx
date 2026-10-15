@@ -59,27 +59,31 @@ export function ConsentForm({ pending, next }: Props) {
     <form onSubmit={onSubmit} className="flex flex-col gap-4">
       <ul className="flex flex-col gap-3">
         {pending.map((doc) => (
-          <li key={doc} className="flex flex-col gap-1 rounded-lg border p-3">
-            <label className="flex min-h-11 items-start gap-3">
+          <li key={doc} className="flex flex-col gap-1 rounded-card bg-card p-4">
+            <label className="flex min-h-11 items-start gap-3 text-body">
               <Checkbox
                 checked={checked.has(doc)}
                 onCheckedChange={(value) => {
                   toggle(doc, value);
                 }}
-                className="mt-1"
+                className="mt-0.5"
               />
               <span>
                 {t.rich('consent.accept', {
                   name: documentTitle(t, doc),
                   doc: (chunks) => (
-                    <Link href={DOCUMENT_PATHS[doc]} target="_blank" className="underline">
+                    <Link
+                      href={DOCUMENT_PATHS[doc]}
+                      target="_blank"
+                      className="font-medium text-primary underline hover:text-primary-hover"
+                    >
                       {chunks}
                     </Link>
                   ),
                 })}
               </span>
             </label>
-            <span className="pl-7 text-sm text-muted-foreground">
+            <span className="pl-8 text-label text-muted-foreground">
               {t('consent.version', { date: new Date(LEGAL_VERSIONS[doc]) })}
             </span>
           </li>
@@ -90,7 +94,7 @@ export function ConsentForm({ pending, next }: Props) {
           <AlertDescription>{tCommon(errorMessageKey(failure.code))}</AlertDescription>
         </Alert>
       )}
-      <Button type="submit" disabled={!allChecked || submitting} className="min-h-11 w-full">
+      <Button type="submit" disabled={!allChecked || submitting} size="lg" className="w-full">
         {t('consent.submit')}
       </Button>
     </form>

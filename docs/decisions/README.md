@@ -28,3 +28,4 @@ never edit an accepted ADR's Decision section.
 | 0020 | Refresh tokens in the body, second httpOnly cookie, silent refresh in the proxy       | Accepted |
 | 0021 | Database hosting: Supabase free tier in Seoul (supersedes the DB row of 0013)         | Accepted |
 | 0022 | Account deletion: 14-day grace, scheduled purge, blocked-email hash (amends 0018)     | Accepted |
+| 0023 | Design system "M4": IBM Plex, semantic tokens, composed components (refines 0007)     | Accepted |

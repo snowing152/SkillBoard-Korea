@@ -85,7 +85,19 @@
     "languages": "언어",
     "portfolio": "포트폴리오",
     "video": "영상 보기",
-    "publishedAt": "{date, date, medium} 게시"
+    "publishedAt": "{date, date, medium} 게시",
+    "about": "소개",
+    "sectionsLabel": "프로필 섹션",
+    "facts": {
+      "location": "지역",
+      "format": "근무 형태",
+      "visa": "비자 (본인 신고)",
+      "languages": "언어"
+    },
+    "notSpecified": "미지정",
+    "watchIntro": "소개 영상 보기",
+    "showContacts": "연락처 보기",
+    "portfolioEmpty": "아직 포트폴리오 링크가 없습니다."
   },
   "list": {
     "title": "인재",
