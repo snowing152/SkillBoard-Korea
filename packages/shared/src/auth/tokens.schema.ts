@@ -64,11 +64,11 @@ export type GoogleStartQuery = z.infer<typeof GoogleStartQuerySchema>;
 
 /**
  * POST /v1/auth/google/complete: the role-choice step for a Google user who has no account yet.
- * `signupToken` is the short-lived signed token the callback handed to the web server (never to
+ * `signupToken` is the short-lived opaque token the callback handed to the web server (never to
  * browser JavaScript); it names the Google identity, the body only adds the person's choices.
  */
 export const GoogleCompleteSchema = z.object({
-  signupToken: z.string().min(20).max(4000),
+  signupToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
   role: z.enum(SIGNUP_ROLES),
   locale: LocaleSchema,
   acceptTerms: z.literal(true),

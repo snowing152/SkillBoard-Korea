@@ -137,9 +137,29 @@ export class TokensService {
     return { ...outcome.next, userId: found.userId };
   }
 
-  /** Row lock on the user: serialises the operations that decide which refresh tokens are alive. */
+  /**
+   * Row lock on the user: serialises the operations that decide which refresh tokens are alive. */
   private async lockUser(tx: Prisma.TransactionClient, userId: string): Promise<void> {
-    await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId}::uuid FOR UPDATE`;
+    await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId}::uuid FOR NO KEY UPDATE`;
+  }
+
+  /**
+   * Starts a session for a login or an exchange. Runs under the same user lock as `rotate` and the
+   * revokes, and lets the caller re-check that what it verified (the password) is still current, so a
+   * password change that commits between the check and this insert cannot be followed by a fresh pair.
+   */
+  async issueRefreshChecked(
+    userId: string,
+    userAgent: string | undefined,
+    stillValid: (tx: Prisma.TransactionClient) => Promise<boolean>,
+  ): Promise<IssuedRefreshToken> {
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockUser(tx, userId);
+      if (!(await stillValid(tx))) {
+        throw new ApiError('UNAUTHENTICATED', 'Invalid email or password');
+      }
+      return this.issueRefresh(userId, userAgent, tx);
+    });
   }
 
   /**
@@ -147,9 +167,12 @@ export class TokensService {
    * of another user is never touched: the `userId` filter comes from the access token, not the body.
    */
   async revoke(userId: string, presented: string): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
-      where: { userId, tokenHash: this.hash(presented), revokedAt: null },
-      data: { revokedAt: this.now() },
+    await this.prisma.$transaction(async (tx) => {
+      await this.lockUser(tx, userId);
+      await tx.refreshToken.updateMany({
+        where: { userId, tokenHash: this.hash(presented), revokedAt: null },
+        data: { revokedAt: this.now() },
+      });
     });
   }
 
@@ -178,9 +201,15 @@ export class TokensService {
   ): Promise<void> {
     const run = async (db: Prisma.TransactionClient) => {
       await this.lockUser(db, userId);
+      const now = this.now();
       await db.refreshToken.updateMany({
         where: { userId, revokedAt: null, ...(keepHash ? { tokenHash: { not: keepHash } } : {}) },
-        data: { revokedAt: this.now() },
+        data: { revokedAt: now },
+      });
+      // A Google exchange code issued before this revocation must not mint a session after it.
+      await db.verificationToken.updateMany({
+        where: { userId, purpose: 'OAUTH_EXCHANGE', usedAt: null },
+        data: { usedAt: now },
       });
     };
     if (tx) await run(tx);
@@ -281,6 +310,9 @@ export class TokensService {
   ): Promise<T> {
     const tokenHash = this.hash(token);
     const now = this.now();
+    // Outside the transaction on purpose: it survives the rollback of a failed or expired attempt, so
+    // abandoned identities do not outlive their ten minutes (PIPA, ADR 0018).
+    await this.prisma.oAuthSignup.deleteMany({ where: { expiresAt: { lt: now } } });
     return this.prisma.$transaction(async (tx) => {
       const row = await tx.oAuthSignup.findUnique({ where: { tokenHash } });
       if (!row) throw new ApiError('NOT_FOUND', 'Token not found or expired');

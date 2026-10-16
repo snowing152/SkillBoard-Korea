@@ -278,6 +278,30 @@ describe('TokensService', () => {
     });
   });
 
+  describe('sessions started by login', () => {
+    it('lock the user and refuse when the verified password hash changed in between', async () => {
+      const stale = jest.fn().mockResolvedValue(false);
+      await expect(service.issueRefreshChecked(USER_ID, 'ua', stale)).rejects.toMatchObject({
+        code: 'UNAUTHENTICATED',
+      });
+      expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+
+      const fresh = jest.fn().mockResolvedValue(true);
+      const issued = await service.issueRefreshChecked(USER_ID, 'ua', fresh);
+      expect(issued.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      expect(prisma.refreshToken.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('a revoke voids open Google exchange codes of the user', async () => {
+      await service.revokeAll(USER_ID);
+      expect(firstCallArg(prisma.verificationToken.updateMany)).toEqual({
+        where: { userId: USER_ID, purpose: 'OAUTH_EXCHANGE', usedAt: null },
+        data: { usedAt: NOW },
+      });
+    });
+  });
+
   describe('locking', () => {
     it('rotation and every revoke lock the user row first', async () => {
       prisma.refreshToken.findUnique.mockResolvedValue({
@@ -343,6 +367,14 @@ describe('TokensService', () => {
       expiresAt: secondsAhead(100),
     };
 
+    it('consume sweeps expired rows first, outside the transaction that may roll back', async () => {
+      prisma.oAuthSignup.findUnique.mockResolvedValue(null);
+      await expect(service.consumeOAuthSignup('tok', jest.fn())).rejects.toBeDefined();
+      expect(firstCallArg(prisma.oAuthSignup.deleteMany)).toEqual({
+        where: { expiresAt: { lt: NOW } },
+      });
+    });
+
     it('consume deletes the row in the same transaction as the effect', async () => {
       prisma.oAuthSignup.findUnique.mockResolvedValue(row);
       prisma.oAuthSignup.deleteMany.mockResolvedValue({ count: 1 });
@@ -352,7 +384,7 @@ describe('TokensService', () => {
         expect.objectContaining({ email: 'parent@example.com', locale: 'ru' }),
         prisma,
       );
-      expect(firstCallArg(prisma.oAuthSignup.deleteMany)).toEqual({ where: { id: 's-1' } });
+      expect(prisma.oAuthSignup.deleteMany).toHaveBeenLastCalledWith({ where: { id: 's-1' } });
     });
 
     it.each([

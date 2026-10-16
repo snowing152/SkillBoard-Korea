@@ -34,6 +34,7 @@ describe('AuthService', () => {
   const consents = { pendingFor: jest.fn(), record: jest.fn() };
   const tokens = {
     issueRefresh: jest.fn(),
+    issueRefreshChecked: jest.fn(),
     issueOneTime: jest.fn(),
     rotate: jest.fn(),
     revoke: jest.fn(),
@@ -60,10 +61,12 @@ describe('AuthService', () => {
   beforeEach(async () => {
     consents.pendingFor.mockResolvedValue([]);
     tokens.issueOAuthSignup.mockResolvedValue('opaque-signup-token');
-    tokens.issueRefresh.mockResolvedValue({
+    const refreshPair = {
       token: 'r'.repeat(43),
       expiresAt: new Date('2026-11-14T00:00:00Z'),
-    });
+    };
+    tokens.issueRefresh.mockResolvedValue(refreshPair);
+    tokens.issueRefreshChecked.mockResolvedValue(refreshPair);
     tokens.issueOneTime.mockResolvedValue('t'.repeat(43));
     prisma.$transaction.mockImplementation((fn: (tx: unknown) => unknown) => fn(prisma));
     mail.send.mockResolvedValue(undefined);
@@ -177,7 +180,11 @@ describe('AuthService', () => {
         pendingConsents: [],
       });
       expect(session.expiresInSeconds).toBe(TTL);
-      expect(tokens.issueRefresh).toHaveBeenCalledWith(USER_ID, 'Mozilla/5.0');
+      expect(tokens.issueRefreshChecked).toHaveBeenCalledWith(
+        USER_ID,
+        'Mozilla/5.0',
+        expect.any(Function),
+      );
     });
   });
 

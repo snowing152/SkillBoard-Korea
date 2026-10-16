@@ -27,8 +27,10 @@ and the accounts spec:
 - **Password change** (`POST /v1/me/password`) revokes every refresh token except the one named in the
   optional `refreshToken` field (the web sends its cookie value); without it, all are revoked. A password
   reset revokes all and also sets `emailVerifiedAt` (opening the emailed link proves the inbox).
-- **Rotation and revocation are serialised**: `rotate`, `revokeAll` and `revokeAllExcept` run in a
-  transaction that first locks the user row (`FOR UPDATE`), so "sign out everywhere" and a concurrent
+- **Rotation and revocation are serialised**: `rotate`, `revoke`, `revokeAll`, `revokeAllExcept` and every
+  session start (`issueRefreshChecked`: login re-checks the password hash it verified) run in a
+  transaction that first locks the user row (`FOR NO KEY UPDATE`). Revoking also voids the user's open
+  Google exchange codes. So "sign out everywhere" and a concurrent
   refresh never interleave: a rotation that loses the race finds its token revoked (401), one that wins is
   followed by a revoke that also ends the token it just issued.
 - **Google flow is bound to the browser on both legs** (login CSRF). Leg 1, API: `GET /v1/auth/google`

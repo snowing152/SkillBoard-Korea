@@ -47,7 +47,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
   // A Google user without an account: the API created nothing and handed over a signed token. It goes
   // into an httpOnly cookie (never into browser JavaScript or the page URL) for the role-choice step.
-  if (error === null && code === null && signup !== null && signup.length <= 4000) {
+  if (error === null && code === null && signup !== null && /^[A-Za-z0-9_-]{43}$/.test(signup)) {
     const next = search.get('next');
     const safe = safeNextPath(next ?? undefined, '');
     const response = go(
@@ -63,7 +63,9 @@ export async function GET(request: NextRequest, { params }: Params) {
   }
 
   if (error !== null || code === null) {
-    return go(`/sign-in?error=${oauthErrorKey(error ?? 'OAUTH_FAILED')}`);
+    const response = go(`/sign-in?error=${oauthErrorKey(error ?? 'OAUTH_FAILED')}`);
+    response.cookies.delete(GOOGLE_NONCE_COOKIE);
+    return response;
   }
 
   let session;

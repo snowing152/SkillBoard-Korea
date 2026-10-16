@@ -126,7 +126,7 @@ export class AuthService {
       // One message for "no such email", "Google-only account" and "wrong password" (ADR 0018).
       throw new ApiError('UNAUTHENTICATED', 'Invalid email or password');
     }
-    return this.session(toAccount(user), userAgent);
+    return this.session(toAccount(user), userAgent, user.passwordHash);
   }
 
   async refresh(refreshToken: string, userAgent?: string): Promise<AuthSession> {
@@ -506,8 +506,23 @@ export class AuthService {
     };
   }
 
-  private async session(account: Account, userAgent?: string): Promise<AuthSession> {
-    const refresh = await this.tokens.issueRefresh(account.id, userAgent);
+  /**
+   * `verifiedHash`: the password hash a login just checked (`null` = none), re-read under the user lock
+   * before the refresh token is issued. `undefined` skips the check (sign-up, exchange).
+   */
+  private async session(
+    account: Account,
+    userAgent?: string,
+    verifiedHash?: string | null,
+  ): Promise<AuthSession> {
+    const refresh = await this.tokens.issueRefreshChecked(account.id, userAgent, async (tx) => {
+      if (verifiedHash === undefined) return true;
+      const now = await tx.user.findUnique({
+        where: { id: account.id },
+        select: { passwordHash: true },
+      });
+      return now?.passwordHash === verifiedHash;
+    });
     return this.sessionWith(account, refresh);
   }
 

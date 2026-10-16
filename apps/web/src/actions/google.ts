@@ -16,7 +16,7 @@ const ChoiceSchema = z.object({
 
 /**
  * Second half of "Continue with Google" for a person without an account: the role and the consent they
- * just gave, plus the signed token the callback left in an httpOnly cookie. `locale` comes from the form
+ * just gave, plus the opaque token the callback left in an httpOnly cookie. `locale` comes from the form
  * because `getLocale()` cannot run in a Server Action.
  */
 export async function completeGoogleSignUp(

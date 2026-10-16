@@ -112,7 +112,7 @@ describe('Google role-choice step', () => {
   });
 
   it('complete: needs a token, a signup role and the consent flag', () => {
-    const ok = { signupToken: 'x'.repeat(40), role: 'CLIENT', locale: 'ko', acceptTerms: true };
+    const ok = { signupToken: 'x'.repeat(43), role: 'CLIENT', locale: 'ko', acceptTerms: true };
     expect(GoogleCompleteSchema.safeParse(ok).success).toBe(true);
     expect(GoogleCompleteSchema.safeParse({ ...ok, acceptTerms: false }).success).toBe(false);
     expect(GoogleCompleteSchema.safeParse({ ...ok, role: 'ADMIN' }).success).toBe(false);

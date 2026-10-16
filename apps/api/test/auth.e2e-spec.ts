@@ -16,6 +16,7 @@ import { AppModule } from '../src/app.module.js';
 import { MailPort, type MailMessage } from '../src/common/mail/mail.port.js';
 import { PrismaService } from '../src/common/prisma/prisma.service.js';
 import { AuthService } from '../src/modules/auth/auth.service.js';
+import { TokensService } from '../src/modules/auth/tokens.service.js';
 import { setupApp } from '../src/setup-app.js';
 
 const EMAILS = {
@@ -369,6 +370,15 @@ describe('auth and accounts (e2e)', () => {
     );
     expect(again).toMatchObject({ ok: true, kind: 'code' });
 
+    // A code issued before a revocation (password reset or change, logout everywhere) is void.
+    const stale = await auth.completeGoogle(
+      { id: 'e2e-google-sub-1', email: EMAILS.google, emailVerified: true, displayName: 'Parent' },
+      { purpose: 'oauth_state', locale: 'en', nonce: 'e2e' },
+    );
+    if (!stale.ok || stale.kind !== 'code') throw new Error('expected an exchange code');
+    await app.get(TokensService).revokeAll(session.user.id);
+    await request(server).post('/v1/auth/exchange').send({ code: stale.code }).expect(404);
+
     // The code is single-use.
     await request(server).post('/v1/auth/exchange').send({ code: outcome.code }).expect(404);
 
@@ -423,7 +433,7 @@ describe('auth and accounts (e2e)', () => {
       .expect(404);
     await request(server)
       .post('/v1/auth/google/complete')
-      .send({ ...body, signupToken: 'x'.repeat(40), acceptTerms: true })
+      .send({ ...body, signupToken: 'x'.repeat(43), acceptTerms: true })
       .expect(404);
   });
 
