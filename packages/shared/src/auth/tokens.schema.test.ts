@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { TEST_PASSWORD, TEST_OTHER_PASSWORD } from '../../test/fixtures/credentials.js';
 import { ChangePasswordSchema, RegisterSchema, UpdateMeSchema } from './auth.schema.js';
 import { OAUTH_CALLBACK_ERRORS } from './oauth.js';
 import { SafePathSchema } from './safe-path.js';
@@ -37,7 +38,7 @@ describe('SafePathSchema', () => {
 });
 
 describe('RegisterSchema (accounts)', () => {
-  const base = { email: 'a@b.co', password: 'Password123!', displayName: 'Anna', role: 'CLIENT' };
+  const base = { email: 'a@b.co', password: TEST_PASSWORD, displayName: 'Anna', role: 'CLIENT' };
 
   it('requires the consent checkbox and defaults the locale', () => {
     expect(RegisterSchema.safeParse(base).success).toBe(false);
@@ -50,13 +51,15 @@ describe('RegisterSchema (accounts)', () => {
 describe('ChangePasswordSchema', () => {
   it('rejects a new password equal to the current one', () => {
     const same = ChangePasswordSchema.safeParse({
-      currentPassword: 'Password123!',
-      newPassword: 'Password123!',
+      currentPassword: TEST_PASSWORD,
+      newPassword: TEST_PASSWORD,
     });
     expect(same.success).toBe(false);
     expect(
-      ChangePasswordSchema.safeParse({ currentPassword: 'Password123!', newPassword: 'Other-456!' })
-        .success,
+      ChangePasswordSchema.safeParse({
+        currentPassword: TEST_PASSWORD,
+        newPassword: TEST_OTHER_PASSWORD,
+      }).success,
     ).toBe(true);
   });
 });
@@ -122,7 +125,7 @@ describe('Google role-choice step', () => {
 
 describe('ChangePasswordSchema refresh token', () => {
   it('is optional and length-bounded', () => {
-    const base = { currentPassword: 'Password123!', newPassword: 'Other-456!!' };
+    const base = { currentPassword: TEST_PASSWORD, newPassword: TEST_OTHER_PASSWORD };
     expect(ChangePasswordSchema.safeParse(base).success).toBe(true);
     expect(ChangePasswordSchema.safeParse({ ...base, refreshToken: 'r'.repeat(43) }).success).toBe(
       true,

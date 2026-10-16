@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { type APIRequestContext, expect, test } from '@playwright/test';
+import { SEED_PASSWORD } from '../test/fixtures/credentials';
 import { markEmailVerified } from './db';
 
 // Spec: docs/specs/talent-profiles.md, criteria 2, 4, 5 and 6. Runs in both viewports (ADR 0010).
 // Needs the API on E2E_API_URL (playwright.config.ts starts it) with the seed applied.
 const API_URL = process.env.E2E_API_URL ?? 'http://localhost:3001';
-const PASSWORD = 'Password123!';
+const PASSWORD = SEED_PASSWORD;
 const HEADLINE = 'E2E tutor for children in Seoul';
 
 /**

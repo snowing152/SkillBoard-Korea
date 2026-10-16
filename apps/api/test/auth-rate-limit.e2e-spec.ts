@@ -5,6 +5,7 @@ import { ErrorResponseSchema } from '@skillboard/shared';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
+import { TEST_PASSWORD } from './fixtures/credentials.js';
 import { setupApp } from '../src/setup-app.js';
 
 /**
@@ -31,7 +32,7 @@ describe('auth rate limit (e2e)', () => {
     const attempt = () =>
       request(server)
         .post('/v1/auth/login')
-        .send({ email: 'nobody-rate-limit@skillboard.local', password: 'Password123!' });
+        .send({ email: 'nobody-rate-limit@skillboard.local', password: TEST_PASSWORD });
 
     for (let i = 0; i < 10; i += 1) {
       expect((await attempt()).status).toBe(401);

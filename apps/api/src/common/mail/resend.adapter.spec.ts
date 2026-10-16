@@ -1,11 +1,12 @@
 import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type { Env } from '../config/env.js';
+import { TEST_RESEND_API_KEY } from '../../../test/fixtures/credentials.js';
 import { ResendMailAdapter } from './resend.adapter.js';
 
 describe('ResendMailAdapter', () => {
   const values: Record<string, string> = {
-    RESEND_API_KEY: 're_test_key',
+    RESEND_API_KEY: TEST_RESEND_API_KEY,
     EMAIL_FROM: 'SkillBoard Korea <noreply@example.com>',
   };
   const config = { get: (key: string) => values[key] } as unknown as ConfigService<Env, true>;
@@ -27,7 +28,9 @@ describe('ResendMailAdapter', () => {
 
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('https://api.resend.com/emails');
-    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer re_test_key');
+    expect((init.headers as Record<string, string>).Authorization).toBe(
+      `Bearer ${TEST_RESEND_API_KEY}`,
+    );
     expect(JSON.parse(init.body as string)).toMatchObject({
       from: values.EMAIL_FROM,
       to: ['anna@example.com'],

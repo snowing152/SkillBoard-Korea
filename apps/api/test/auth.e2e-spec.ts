@@ -10,6 +10,7 @@ import {
   SkillCatalogSchema,
   TalentCardListSchema,
 } from '@skillboard/shared';
+import { TEST_NEW_PASSWORD, TEST_PASSWORD, TEST_WRONG_PASSWORD } from './fixtures/credentials.js';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
@@ -25,8 +26,8 @@ const EMAILS = {
   googleNew: 'e2e-auth-google-new@skillboard.local',
   unknown: 'e2e-auth-nobody@skillboard.local',
 };
-const PASSWORD = 'Password123!';
-const NEW_PASSWORD = 'Another-pass-456!';
+const PASSWORD = TEST_PASSWORD;
+const NEW_PASSWORD = TEST_NEW_PASSWORD;
 
 describe('auth and accounts (e2e)', () => {
   let app: INestApplication;
@@ -272,7 +273,7 @@ describe('auth and accounts (e2e)', () => {
     const wrong = await request(server)
       .post('/v1/me/password')
       .set(headers)
-      .send({ currentPassword: 'Not-the-password-1', newPassword: NEW_PASSWORD })
+      .send({ currentPassword: TEST_WRONG_PASSWORD, newPassword: NEW_PASSWORD })
       .expect(403);
     expect(ErrorResponseSchema.parse(wrong.body).error.details?.[0]?.code).toBe('WRONG_PASSWORD');
 

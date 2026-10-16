@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { SEED_PASSWORD } from '../test/fixtures/credentials';
 import { expect, test } from '@playwright/test';
 import { outdateConsent } from './db';
 
@@ -8,7 +9,7 @@ import { outdateConsent } from './db';
 // Sign-up now records TERMS and PRIVACY (accounts spec), so the user's PRIVACY row is aged to a version
 // that is no longer current: the same "one document pending" state a new LEGAL_VERSIONS value causes.
 const API_URL = process.env.E2E_API_URL ?? 'http://localhost:3001';
-const PASSWORD = 'Password123!';
+const PASSWORD = SEED_PASSWORD;
 
 test.describe('legal pages', () => {
   for (const [path, title] of [

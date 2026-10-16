@@ -11,6 +11,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/common/prisma/prisma.service.js';
+import { TEST_PASSWORD } from './fixtures/credentials.js';
 import { setupApp } from '../src/setup-app.js';
 
 const EMAIL = 'e2e-consents@skillboard.local';
@@ -53,7 +54,7 @@ describe('consents (e2e)', () => {
       .post('/v1/auth/register')
       .send({
         email: EMAIL,
-        password: 'Password123!',
+        password: TEST_PASSWORD,
         displayName: 'E2E Consent',
         role: 'CLIENT',
         locale: 'ru',

@@ -3,6 +3,15 @@ import { JwtModule, JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import { AuthSessionSchema, LEGAL_VERSIONS } from '@skillboard/shared';
 import { argon2id, hash } from 'argon2';
+import {
+  TEST_GOOGLE_CLIENT_SECRET,
+  TEST_JWT_SECRET,
+  TEST_OTHER_PASSWORD,
+  TEST_PASSWORD,
+  TEST_RESET_PASSWORD,
+  TEST_STRANGER_PASSWORD,
+  TEST_WRONG_PASSWORD,
+} from '../../../test/fixtures/credentials.js';
 import { firstCallArg } from '../../../test/helpers.js';
 import { ApiError } from '../../common/errors/api-error.js';
 import { MailPort } from '../../common/mail/mail.port.js';
@@ -14,14 +23,14 @@ import { TokensService } from './tokens.service.js';
 
 const USER_ID = '019a0000-0000-7000-8000-000000000001';
 const TTL = 900;
-const PASSWORD = 'Password123!';
+const PASSWORD = TEST_PASSWORD;
 const EMAIL = 'anna@example.com';
 
 const env: Record<string, unknown> = {
   JWT_ACCESS_TTL_SECONDS: TTL,
   WEB_URL: 'https://skillboard.example',
   GOOGLE_CLIENT_ID: 'id',
-  GOOGLE_CLIENT_SECRET: 'secret',
+  GOOGLE_CLIENT_SECRET: TEST_GOOGLE_CLIENT_SECRET,
   GOOGLE_CALLBACK_URL: 'https://api.example/v1/auth/google/callback',
 };
 
@@ -72,7 +81,7 @@ describe('AuthService', () => {
     mail.send.mockResolvedValue(undefined);
 
     const moduleRef = await Test.createTestingModule({
-      imports: [JwtModule.register({ secret: 'x'.repeat(32), signOptions: { expiresIn: TTL } })],
+      imports: [JwtModule.register({ secret: TEST_JWT_SECRET, signOptions: { expiresIn: TTL } })],
       providers: [
         AuthService,
         { provide: PrismaService, useValue: prisma },
@@ -149,7 +158,7 @@ describe('AuthService', () => {
     it('rejects a wrong password and an unknown email with the same error', async () => {
       prisma.user.findUnique.mockResolvedValueOnce({
         ...row,
-        passwordHash: await hash('other-password', { type: argon2id }),
+        passwordHash: await hash(TEST_STRANGER_PASSWORD, { type: argon2id }),
       });
       const wrong = service.login({ email: EMAIL, password: PASSWORD });
       await expect(wrong).rejects.toBeInstanceOf(ApiError);
@@ -273,7 +282,7 @@ describe('AuthService', () => {
         (_t: string, _p: string, effect: (id: string, tx: unknown) => Promise<void>) =>
           effect(USER_ID, tx),
       );
-      await service.confirmPasswordReset('p'.repeat(43), 'New-password-1');
+      await service.confirmPasswordReset('p'.repeat(43), TEST_RESET_PASSWORD);
       const { data } = firstCallArg(tx.user.update) as { data: { passwordHash: string } };
       expect(data.passwordHash).toMatch(/^\$argon2id\$/);
       expect(tokens.revokeAll).toHaveBeenCalledWith(USER_ID, tx);
@@ -285,7 +294,7 @@ describe('AuthService', () => {
         (_t: string, _p: string, effect: (id: string, tx: unknown) => Promise<void>) =>
           effect(USER_ID, tx),
       );
-      await service.confirmPasswordReset('p'.repeat(43), 'New-password-1');
+      await service.confirmPasswordReset('p'.repeat(43), TEST_RESET_PASSWORD);
       const arg = firstCallArg(tx.user.updateMany) as {
         where: { id: string; emailVerifiedAt: null };
         data: { emailVerifiedAt: Date };
@@ -300,7 +309,7 @@ describe('AuthService', () => {
       prisma.user.findUnique.mockResolvedValue({ passwordHash: null });
       const result = service.changePassword(USER_ID, {
         currentPassword: PASSWORD,
-        newPassword: 'Other-password-1',
+        newPassword: TEST_OTHER_PASSWORD,
       });
       await expect(result).rejects.toMatchObject({
         code: 'FORBIDDEN',
@@ -314,14 +323,14 @@ describe('AuthService', () => {
       });
       await expect(
         service.changePassword(USER_ID, {
-          currentPassword: 'wrong-pass',
-          newPassword: 'Other-1!x',
+          currentPassword: TEST_WRONG_PASSWORD,
+          newPassword: TEST_OTHER_PASSWORD,
         }),
       ).rejects.toMatchObject({ code: 'FORBIDDEN', details: [{ code: 'WRONG_PASSWORD' }] });
 
       await service.changePassword(USER_ID, {
         currentPassword: PASSWORD,
-        newPassword: 'Other-password-1',
+        newPassword: TEST_OTHER_PASSWORD,
         refreshToken: 'k'.repeat(43),
       });
       expect(prisma.user.update).toHaveBeenCalledTimes(1);

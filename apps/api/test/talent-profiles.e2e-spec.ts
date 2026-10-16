@@ -15,11 +15,12 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/common/prisma/prisma.service.js';
+import { TEST_PASSWORD } from './fixtures/credentials.js';
 import { setupApp } from '../src/setup-app.js';
 
 // Fixed email, deleted before and after, so the test is repeatable without a seed reset.
 const EMAIL = 'e2e-talent@skillboard.local';
-const PASSWORD = 'Password123!';
+const PASSWORD = TEST_PASSWORD;
 
 const body = (skillId: string) => ({
   headline: 'E2E Russian tutor',

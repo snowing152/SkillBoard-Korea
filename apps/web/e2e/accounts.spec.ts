@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
+import { SEED_PASSWORD, TEST_NEW_PASSWORD } from '../test/fixtures/credentials';
 import { expect, test } from '@playwright/test';
 
 // Spec: docs/specs/accounts.md, criteria 1, 2, 4, 10, 11 and 13. Runs in both viewports (ADR 0010).
 // Sign-up is the flow under test here, so it goes through the UI. The Google redirect dance and the
 // email links cannot run without Google and a mail provider: they are covered by API unit tests and
 // the API e2e test, which reads the outgoing mail.
-const PASSWORD = 'Password123!';
+const PASSWORD = SEED_PASSWORD;
 const SESSION_COOKIE = 'skillboard_session';
 const REFRESH_COOKIE = 'skillboard_refresh';
 
@@ -223,7 +224,7 @@ test.describe('password change', () => {
 
     await page.goto('/me/account');
     await page.getByLabel('Current password').fill(PASSWORD);
-    await page.getByLabel('New password').fill('Another-pass-456!');
+    await page.getByLabel('New password').fill(TEST_NEW_PASSWORD);
     await page.getByRole('button', { name: 'Change password' }).click();
     await expect(page.getByText('Password changed.')).toBeVisible();
 

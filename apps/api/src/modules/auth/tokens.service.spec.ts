@@ -1,12 +1,13 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { createHash } from 'node:crypto';
+import { TEST_TOKEN_PEPPER } from '../../../test/fixtures/credentials.js';
 import { firstCallArg } from '../../../test/helpers.js';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
 import { TokensService } from './tokens.service.js';
 
 const USER_ID = '019a0000-0000-7000-8000-000000000001';
-const PEPPER = 'p'.repeat(32);
+const PEPPER = TEST_TOKEN_PEPPER;
 const GRACE_SECONDS = 30;
 const NOW = new Date('2026-10-15T12:00:00.000Z');
 
