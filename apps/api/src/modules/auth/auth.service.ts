@@ -7,6 +7,7 @@ import {
   type AuthUser,
   type ChangePassword,
   DEFAULT_LOCALE,
+  type GoogleComplete,
   type GoogleStartQuery,
   type Locale,
   type Login,
@@ -14,6 +15,7 @@ import {
   type Logout,
   type OAuthCallbackError,
   type Register,
+  type SignupRole,
   SIGNUP_CONSENT_DOCUMENTS,
   type UpdateMe,
 } from '@skillboard/shared';
@@ -26,7 +28,13 @@ import { passwordResetMail, verifyEmailMail } from '../../common/mail/templates.
 import { PrismaService } from '../../common/prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { ConsentsService } from '../consents/consents.service.js';
-import { type GoogleProfile, type OAuthState, OAuthStateSchema } from './google-profile.js';
+import {
+  type GoogleProfile,
+  type OAuthSignup,
+  OAuthSignupSchema,
+  type OAuthState,
+  OAuthStateSchema,
+} from './google-profile.js';
 import { TokensService } from './tokens.service.js';
 
 /**
@@ -56,7 +64,10 @@ const DUMMY_HASH_PROMISE = hash('dummy-password-for-constant-time-login', { type
 const STATE_TTL = '10m';
 const DISPLAY_NAME_MAX = 50;
 
-export type GoogleOutcome = { ok: true; code: string } | { ok: false; error: OAuthCallbackError };
+export type GoogleOutcome =
+  | { ok: true; kind: 'code'; code: string }
+  | { ok: true; kind: 'signup'; signupToken: string }
+  | { ok: false; error: OAuthCallbackError };
 
 /**
  * Accounts (ADR 0009, 0019, 0020): sign-up, sign-in, refresh, email verification, password reset,
@@ -180,6 +191,11 @@ export class AuthService {
     const passwordHash = await hash(password, { type: argon2id });
     await this.tokens.consumeOneTime(token, 'PASSWORD_RESET', async (userId, tx) => {
       await tx.user.update({ where: { id: userId }, data: { passwordHash } });
+      // Opening the link proves the person controls the inbox, which is what verification means.
+      await tx.user.updateMany({
+        where: { id: userId, emailVerifiedAt: null },
+        data: { emailVerifiedAt: new Date(Date.now()) },
+      });
       // Whoever knew the old password must not stay signed in.
       await this.tokens.revokeAll(userId, tx);
       this.logger.log(`password-reset userId=${userId} outcome=changed`);
@@ -194,24 +210,35 @@ export class AuthService {
     );
   }
 
-  /** Signs the sign-up choices into the `state` parameter that Google echoes back. */
-  signOAuthState(query: GoogleStartQuery): Promise<string> {
+  /**
+   * Signs the sign-up choices into the `state` parameter that Google echoes back. The returned nonce
+   * also goes into a cookie on the browser that starts the flow, so a callback link made by someone
+   * else (login CSRF) fails the comparison in `verifyOAuthState`.
+   */
+  async signOAuthState(query: GoogleStartQuery): Promise<{ state: string; nonce: string }> {
+    const nonce = randomBytes(16).toString('base64url');
     const payload: OAuthState = {
       purpose: 'oauth_state',
-      role: query.role,
+      ...(query.role ? { role: query.role } : {}),
       locale: query.locale,
       ...(query.next ? { next: query.next } : {}),
-      nonce: randomBytes(16).toString('base64url'),
+      nonce,
     };
-    return this.jwt.signAsync(payload, { expiresIn: STATE_TTL });
+    return { state: await this.jwt.signAsync(payload, { expiresIn: STATE_TTL }), nonce };
   }
 
-  /** Returns null for anything that is not a fresh, well-formed state of ours. */
-  async verifyOAuthState(state: string | undefined): Promise<OAuthState | null> {
-    if (!state) return null;
+  /**
+   * Returns null for anything that is not a fresh, well-formed state of ours, or whose nonce differs
+   * from the one in this browser's cookie.
+   */
+  async verifyOAuthState(
+    state: string | undefined,
+    browserNonce: string | undefined,
+  ): Promise<OAuthState | null> {
+    if (!state || !browserNonce) return null;
     try {
       const parsed = OAuthStateSchema.safeParse(await this.jwt.verifyAsync(state));
-      return parsed.success ? parsed.data : null;
+      return parsed.success && parsed.data.nonce === browserNonce ? parsed.data : null;
     } catch {
       return null;
     }
@@ -259,9 +286,10 @@ export class AuthService {
         }
         userId = sameEmail.id;
         outcome = 'linked';
-      } else {
+      } else if (state.role) {
+        // Role and consent were given on the sign-up page: create the account right away.
         try {
-          userId = await this.createGoogleUser(profile, email, state);
+          userId = await this.createGoogleUser(profile, email, state.role, state.locale);
         } catch (err: unknown) {
           // A concurrent sign-up with the same email won the unique index; ask the user to retry.
           if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -270,17 +298,38 @@ export class AuthService {
           throw err;
         }
         outcome = 'created';
+      } else {
+        // Started on /sign-in: nobody chose a role or accepted the terms, so nothing is created yet.
+        const signup: OAuthSignup = {
+          purpose: 'oauth_signup',
+          googleId: profile.id,
+          email,
+          emailVerified: profile.emailVerified,
+          displayName: profile.displayName,
+          locale: state.locale,
+        };
+        this.logger.log('google outcome=needs_role');
+        return {
+          ok: true,
+          kind: 'signup',
+          signupToken: await this.jwt.signAsync(signup, { expiresIn: STATE_TTL }),
+        };
       }
     }
 
     this.logger.log(`google userId=${userId} outcome=${outcome}`);
-    return { ok: true, code: await this.tokens.issueOneTime(userId, 'OAUTH_EXCHANGE') };
+    return {
+      ok: true,
+      kind: 'code',
+      code: await this.tokens.issueOneTime(userId, 'OAUTH_EXCHANGE'),
+    };
   }
 
   private async createGoogleUser(
     profile: GoogleProfile,
     email: string,
-    state: OAuthState,
+    role: SignupRole,
+    locale: Locale,
   ): Promise<string> {
     const fallbackName = email.split('@')[0] ?? 'User';
     const given = profile.displayName?.trim() ?? '';
@@ -292,17 +341,54 @@ export class AuthService {
         data: {
           email,
           displayName,
-          roles: [state.role],
-          locale: state.locale,
+          roles: [role],
+          locale,
           passwordHash: null,
           emailVerifiedAt: profile.emailVerified ? new Date(Date.now()) : null,
           identities: { create: { provider: 'GOOGLE', providerUserId: profile.id } },
         },
         select: { id: true },
       });
-      await this.consents.record(created.id, SIGNUP_CONSENT_DOCUMENTS, state.locale, tx);
+      await this.consents.record(created.id, SIGNUP_CONSENT_DOCUMENTS, locale, tx);
       return created.id;
     });
+  }
+
+  /**
+   * The role-choice step: the person picked a role and accepted the terms for the Google identity the
+   * signed token names. Only creates; an identity or email that already exists is a CONFLICT, so the
+   * token can never be used to sign in to somebody's account.
+   */
+  async completeGoogleSignup(input: GoogleComplete, userAgent?: string): Promise<AuthSession> {
+    let signup: OAuthSignup;
+    try {
+      signup = OAuthSignupSchema.parse(await this.jwt.verifyAsync(input.signupToken));
+    } catch {
+      throw new ApiError('NOT_FOUND', 'Token not found or expired');
+    }
+    let userId: string;
+    try {
+      userId = await this.createGoogleUser(
+        {
+          id: signup.googleId,
+          email: signup.email,
+          emailVerified: signup.emailVerified,
+          displayName: signup.displayName,
+        },
+        signup.email,
+        input.role,
+        input.locale,
+      );
+    } catch (err: unknown) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ApiError('CONFLICT', 'Account already exists');
+      }
+      throw err;
+    }
+    this.logger.log(`google userId=${userId} outcome=created_after_role`);
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: userSelect });
+    if (!user) throw new ApiError('NOT_FOUND', 'Token not found or expired');
+    return this.session(toAccount(user), userAgent);
   }
 
   /** Spends the callback's one-time code and starts the session, exactly like a login. */
@@ -349,6 +435,8 @@ export class AuthService {
     }
     const passwordHash = await hash(input.newPassword, { type: argon2id });
     await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    // Other devices may be in a thief's hands: sign them out, keep the one that just proved the old password.
+    await this.tokens.revokeAllExcept(userId, input.refreshToken);
     this.logger.log(`change-password userId=${userId} outcome=changed`);
   }
 

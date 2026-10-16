@@ -4,6 +4,7 @@ import { OAUTH_CALLBACK_ERRORS } from './oauth.js';
 import { SafePathSchema } from './safe-path.js';
 import {
   ExchangeSchema,
+  GoogleCompleteSchema,
   GoogleStartQuerySchema,
   LogoutSchema,
   PasswordResetConfirmSchema,
@@ -96,5 +97,36 @@ describe('token schemas', () => {
 describe('OAUTH_CALLBACK_ERRORS', () => {
   it('lists exactly the two values the callback may use', () => {
     expect([...OAUTH_CALLBACK_ERRORS]).toEqual(['EMAIL_NOT_VERIFIED', 'OAUTH_FAILED']);
+  });
+});
+
+describe('Google role-choice step', () => {
+  it('start query: role and acceptTerms come together or not at all', () => {
+    const base = { locale: 'en' };
+    expect(GoogleStartQuerySchema.safeParse(base).success).toBe(true);
+    expect(
+      GoogleStartQuerySchema.safeParse({ ...base, role: 'TALENT', acceptTerms: 'true' }).success,
+    ).toBe(true);
+    expect(GoogleStartQuerySchema.safeParse({ ...base, role: 'TALENT' }).success).toBe(false);
+    expect(GoogleStartQuerySchema.safeParse({ ...base, acceptTerms: 'true' }).success).toBe(false);
+  });
+
+  it('complete: needs a token, a signup role and the consent flag', () => {
+    const ok = { signupToken: 'x'.repeat(40), role: 'CLIENT', locale: 'ko', acceptTerms: true };
+    expect(GoogleCompleteSchema.safeParse(ok).success).toBe(true);
+    expect(GoogleCompleteSchema.safeParse({ ...ok, acceptTerms: false }).success).toBe(false);
+    expect(GoogleCompleteSchema.safeParse({ ...ok, role: 'ADMIN' }).success).toBe(false);
+    expect(GoogleCompleteSchema.safeParse({ ...ok, signupToken: 'short' }).success).toBe(false);
+  });
+});
+
+describe('ChangePasswordSchema refresh token', () => {
+  it('is optional and length-bounded', () => {
+    const base = { currentPassword: 'Password123!', newPassword: 'Other-456!!' };
+    expect(ChangePasswordSchema.safeParse(base).success).toBe(true);
+    expect(ChangePasswordSchema.safeParse({ ...base, refreshToken: 'r'.repeat(43) }).success).toBe(
+      true,
+    );
+    expect(ChangePasswordSchema.safeParse({ ...base, refreshToken: 'short' }).success).toBe(false);
   });
 });

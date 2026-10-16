@@ -34,11 +34,35 @@ export type PasswordResetConfirm = z.infer<typeof PasswordResetConfirmSchema>;
 export const ExchangeSchema = z.object({ code: OpaqueTokenSchema });
 export type Exchange = z.infer<typeof ExchangeSchema>;
 
-/** Query of GET /v1/auth/google. `acceptTerms` is the string `'true'` because it travels in a URL. */
-export const GoogleStartQuerySchema = z.object({
+/**
+ * Query of GET /v1/auth/google. `acceptTerms` is the string `'true'` because it travels in a URL.
+ * From the sign-up page the person has already chosen a role and ticked the box, so both come along and
+ * a new account is created at once. From the sign-in page neither is known: a Google user without an
+ * account is then sent to a role-choice step instead of being created silently. Role and consent always
+ * travel together.
+ */
+export const GoogleStartQuerySchema = z
+  .object({
+    role: z.enum(SIGNUP_ROLES).optional(),
+    locale: LocaleSchema,
+    acceptTerms: z.literal('true').optional(),
+    next: SafePathSchema.optional(),
+  })
+  .refine((q) => (q.role === undefined) === (q.acceptTerms === undefined), {
+    path: ['acceptTerms'],
+    message: 'role and acceptTerms must be sent together',
+  });
+export type GoogleStartQuery = z.infer<typeof GoogleStartQuerySchema>;
+
+/**
+ * POST /v1/auth/google/complete: the role-choice step for a Google user who has no account yet.
+ * `signupToken` is the short-lived signed token the callback handed to the web server (never to
+ * browser JavaScript); it names the Google identity, the body only adds the person's choices.
+ */
+export const GoogleCompleteSchema = z.object({
+  signupToken: z.string().min(20).max(4000),
   role: z.enum(SIGNUP_ROLES),
   locale: LocaleSchema,
-  acceptTerms: z.literal('true'),
-  next: SafePathSchema.optional(),
+  acceptTerms: z.literal(true),
 });
-export type GoogleStartQuery = z.infer<typeof GoogleStartQuerySchema>;
+export type GoogleComplete = z.infer<typeof GoogleCompleteSchema>;

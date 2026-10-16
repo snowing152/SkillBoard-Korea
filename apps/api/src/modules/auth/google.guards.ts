@@ -1,9 +1,12 @@
 import { type ExecutionContext, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
 import { GoogleStartQuerySchema } from '@skillboard/shared';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
+import type { Env } from '../../common/config/env.js';
 import { ApiError } from '../../common/errors/api-error.js';
 import { AuthService } from './auth.service.js';
+import { OAUTH_NONCE_COOKIE, oauthNonceCookieOptions } from './google-cookie.js';
 
 /**
  * Starts the Google flow: validates the query (guards run before pipes), signs it into `state` and lets
@@ -11,7 +14,10 @@ import { AuthService } from './auth.service.js';
  */
 @Injectable()
 export class GoogleStartGuard extends AuthGuard('google') {
-  constructor(private readonly auth: AuthService) {
+  constructor(
+    private readonly auth: AuthService,
+    private readonly config: ConfigService<Env, true>,
+  ) {
     super();
   }
 
@@ -35,7 +41,17 @@ export class GoogleStartGuard extends AuthGuard('google') {
         })),
       );
     }
-    return { session: false, state: await this.auth.signOAuthState(query.data) };
+    const { state, nonce } = await this.auth.signOAuthState(query.data);
+    // Set before Passport redirects: the cookie travels with the 302 to Google and comes back on the callback.
+    context
+      .switchToHttp()
+      .getResponse<Response>()
+      .cookie(
+        OAUTH_NONCE_COOKIE,
+        nonce,
+        oauthNonceCookieOptions(this.config.get('NODE_ENV', { infer: true }) === 'production'),
+      );
+    return { session: false, state };
   }
 }
 

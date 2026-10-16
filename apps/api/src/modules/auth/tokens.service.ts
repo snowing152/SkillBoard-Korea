@@ -49,16 +49,6 @@ export class TokensService {
     return randomBytes(32).toString('base64url');
   }
 
-  /**
-   * `revokedAt` for tokens that were revoked on purpose (logout, password reset, theft response). It is
-   * placed just outside the concurrent-refresh grace window, so presenting such a token later counts as
-   * a replay and not as "two tabs refreshed at once" (ADR 0020).
-   */
-  private deliberateRevokedAt(): Date {
-    const graceMs = this.config.get('REFRESH_GRACE_SECONDS', { infer: true }) * 1000;
-    return new Date(this.now().getTime() - graceMs - 1000);
-  }
-
   // ---- refresh tokens -------------------------------------------------------------------------
 
   async issueRefresh(
@@ -82,37 +72,41 @@ export class TokensService {
   }
 
   /**
-   * Rotation with reuse detection (ADR 0020).
-   * - unknown token: 401, nobody to protect;
-   * - expired, or revoked longer ago than the grace window: replay or theft, so every refresh token of
+   * Rotation with reuse detection (ADR 0020, amended by ADR 0024). Two timestamps keep the cases apart:
+   * `rotatedAt` = exchanged for a newer token, `revokedAt` = ended on purpose (logout, password change
+   * or reset, theft response).
+   * - unknown, revoked or expired: a plain 401 that touches nothing (a device that sat unused for 30
+   *   days, or one signed out by a password change, must not sign the user out elsewhere);
+   * - rotated less than the grace window ago: a concurrent refresh (parallel tabs). A fresh pair is
+   *   issued and nothing else is revoked;
+   * - rotated longer ago: a used token came back, which is replay or theft, so every refresh token of
    *   that user is revoked and the answer is 401;
-   * - revoked within the grace window: a concurrent refresh (parallel tabs). A fresh pair is issued and
-   *   nothing else is revoked;
-   * - otherwise: revoke this token and issue the next one.
+   * - otherwise: mark this token rotated and issue the next one.
    */
   async rotate(presented: string, userAgent: string | undefined): Promise<RotatedRefreshToken> {
     const tokenHash = this.hash(presented);
     const row = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
-      select: { id: true, userId: true, expiresAt: true, revokedAt: true },
+      select: { id: true, userId: true, expiresAt: true, rotatedAt: true, revokedAt: true },
     });
-    if (!row) throw new ApiError('UNAUTHENTICATED', 'Invalid or expired token');
-
     const now = this.now();
-    const graceMs = this.config.get('REFRESH_GRACE_SECONDS', { infer: true }) * 1000;
-    const expired = row.expiresAt.getTime() <= now.getTime();
-    const replayed = row.revokedAt !== null && now.getTime() - row.revokedAt.getTime() >= graceMs;
-    if (expired || replayed) {
-      await this.revokeAll(row.userId);
+    if (!row) throw new ApiError('UNAUTHENTICATED', 'Invalid or expired token');
+    if (row.revokedAt !== null || row.expiresAt.getTime() <= now.getTime()) {
       throw new ApiError('UNAUTHENTICATED', 'Invalid or expired token');
     }
 
-    if (row.revokedAt === null) {
-      // `revokedAt: null` in the filter makes two simultaneous rotations safe: the loser updates zero
+    if (row.rotatedAt !== null) {
+      const graceMs = this.config.get('REFRESH_GRACE_SECONDS', { infer: true }) * 1000;
+      if (now.getTime() - row.rotatedAt.getTime() >= graceMs) {
+        await this.revokeAll(row.userId);
+        throw new ApiError('UNAUTHENTICATED', 'Invalid or expired token');
+      }
+    } else {
+      // `rotatedAt: null` in the filter makes two simultaneous rotations safe: the loser updates zero
       // rows and is handled like a concurrent refresh, which is what it is.
       await this.prisma.refreshToken.updateMany({
-        where: { id: row.id, revokedAt: null },
-        data: { revokedAt: now },
+        where: { id: row.id, rotatedAt: null, revokedAt: null },
+        data: { rotatedAt: now },
       });
     }
     const next = await this.issueRefresh(row.userId, userAgent);
@@ -126,19 +120,32 @@ export class TokensService {
   async revoke(userId: string, presented: string): Promise<void> {
     await this.prisma.refreshToken.updateMany({
       where: { userId, tokenHash: this.hash(presented), revokedAt: null },
-      data: { revokedAt: this.deliberateRevokedAt() },
+      data: { revokedAt: this.now() },
     });
   }
 
-  /** Logout everywhere, password reset, theft response. Leaves nothing inside the grace window. */
+  /** Logout everywhere, password reset, theft response. */
   async revokeAll(userId: string, tx?: Prisma.TransactionClient): Promise<void> {
     const db = tx ?? this.prisma;
-    const cutoff = this.deliberateRevokedAt();
-    // Also rows rotated inside the grace window: otherwise a token rotated seconds ago would still pass
-    // as a "concurrent refresh" after a reset or a theft response and mint a fresh pair.
     await db.refreshToken.updateMany({
-      where: { userId, OR: [{ revokedAt: null }, { revokedAt: { gt: cutoff } }] },
-      data: { revokedAt: cutoff },
+      where: { userId, revokedAt: null },
+      data: { revokedAt: this.now() },
+    });
+  }
+
+  /**
+   * Password change: every session except the one the caller names (its own refresh token), so the
+   * person stays signed in on this device and everyone else is signed out. An unknown or missing token
+   * keeps nothing, which is the safe direction.
+   */
+  async revokeAllExcept(userId: string, keepToken: string | undefined): Promise<void> {
+    await this.prisma.refreshToken.updateMany({
+      where: {
+        userId,
+        revokedAt: null,
+        ...(keepToken ? { tokenHash: { not: this.hash(keepToken) } } : {}),
+      },
+      data: { revokedAt: this.now() },
     });
   }
 

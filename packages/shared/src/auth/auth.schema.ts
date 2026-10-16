@@ -72,7 +72,14 @@ export const UpdateMeSchema = z.object({
 export type UpdateMe = z.infer<typeof UpdateMeSchema>;
 
 export const ChangePasswordSchema = z
-  .object({ currentPassword: PasswordSchema, newPassword: PasswordSchema })
+  .object({
+    currentPassword: PasswordSchema,
+    newPassword: PasswordSchema,
+    refreshToken: z.string().min(20).max(200).optional().meta({
+      description:
+        "The caller's own refresh token: every other session is signed out, this one stays. Omit to sign out all.",
+    }),
+  })
   .refine((v) => v.newPassword !== v.currentPassword, {
     path: ['newPassword'],
     message: 'New password must differ from the current one',

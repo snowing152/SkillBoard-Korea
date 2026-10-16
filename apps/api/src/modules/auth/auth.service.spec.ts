@@ -38,6 +38,7 @@ describe('AuthService', () => {
     rotate: jest.fn(),
     revoke: jest.fn(),
     revokeAll: jest.fn(),
+    revokeAllExcept: jest.fn(),
     consumeOneTime: jest.fn(),
   };
   const mail = { send: jest.fn() };
@@ -257,7 +258,7 @@ describe('AuthService', () => {
     });
 
     it('confirm stores a new hash and revokes every refresh token in the same transaction', async () => {
-      const tx = { user: { update: jest.fn() } };
+      const tx = { user: { update: jest.fn(), updateMany: jest.fn() } };
       tokens.consumeOneTime.mockImplementation(
         (_t: string, _p: string, effect: (id: string, tx: unknown) => Promise<void>) =>
           effect(USER_ID, tx),
@@ -266,6 +267,21 @@ describe('AuthService', () => {
       const { data } = firstCallArg(tx.user.update) as { data: { passwordHash: string } };
       expect(data.passwordHash).toMatch(/^\$argon2id\$/);
       expect(tokens.revokeAll).toHaveBeenCalledWith(USER_ID, tx);
+    });
+
+    it('confirm also verifies the email, only if it was not verified yet', async () => {
+      const tx = { user: { update: jest.fn(), updateMany: jest.fn() } };
+      tokens.consumeOneTime.mockImplementation(
+        (_t: string, _p: string, effect: (id: string, tx: unknown) => Promise<void>) =>
+          effect(USER_ID, tx),
+      );
+      await service.confirmPasswordReset('p'.repeat(43), 'New-password-1');
+      const arg = firstCallArg(tx.user.updateMany) as {
+        where: { id: string; emailVerifiedAt: null };
+        data: { emailVerifiedAt: Date };
+      };
+      expect(arg.where).toEqual({ id: USER_ID, emailVerifiedAt: null });
+      expect(arg.data.emailVerifiedAt).toBeInstanceOf(Date);
     });
   });
 
@@ -296,8 +312,11 @@ describe('AuthService', () => {
       await service.changePassword(USER_ID, {
         currentPassword: PASSWORD,
         newPassword: 'Other-password-1',
+        refreshToken: 'k'.repeat(43),
       });
       expect(prisma.user.update).toHaveBeenCalledTimes(1);
+      // Every other session is signed out; the caller's own refresh token is the one kept.
+      expect(tokens.revokeAllExcept).toHaveBeenCalledWith(USER_ID, 'k'.repeat(43));
     });
   });
 
@@ -322,7 +341,7 @@ describe('AuthService', () => {
 
       const outcome = await service.completeGoogle(google, state);
 
-      expect(outcome).toEqual({ ok: true, code: 't'.repeat(43) });
+      expect(outcome).toEqual({ ok: true, kind: 'code', code: 't'.repeat(43) });
       const { data } = firstCallArg(prisma.user.create) as {
         data: {
           email: string;
@@ -391,22 +410,110 @@ describe('AuthService', () => {
     });
 
     it('signs and verifies the state, and rejects an access token or garbage', async () => {
-      const signed = await service.signOAuthState({
+      const { state, nonce } = await service.signOAuthState({
         role: 'TALENT',
         locale: 'ko',
         acceptTerms: 'true',
         next: '/talents',
       });
-      await expect(service.verifyOAuthState(signed)).resolves.toMatchObject({
+      await expect(service.verifyOAuthState(state, nonce)).resolves.toMatchObject({
         role: 'TALENT',
         locale: 'ko',
         next: '/talents',
       });
 
       const access = await jwt.signAsync({ sub: USER_ID, roles: ['ADMIN'] });
-      await expect(service.verifyOAuthState(access)).resolves.toBeNull();
-      await expect(service.verifyOAuthState('not-a-jwt')).resolves.toBeNull();
-      await expect(service.verifyOAuthState(undefined)).resolves.toBeNull();
+      await expect(service.verifyOAuthState(access, nonce)).resolves.toBeNull();
+      await expect(service.verifyOAuthState('not-a-jwt', nonce)).resolves.toBeNull();
+      await expect(service.verifyOAuthState(undefined, nonce)).resolves.toBeNull();
+    });
+
+    it('binds the state to the browser: a missing or different cookie nonce fails (login CSRF)', async () => {
+      const { state, nonce } = await service.signOAuthState({ locale: 'en' });
+      await expect(service.verifyOAuthState(state, undefined)).resolves.toBeNull();
+      await expect(service.verifyOAuthState(state, `${nonce}x`)).resolves.toBeNull();
+      await expect(service.verifyOAuthState(state, nonce)).resolves.not.toBeNull();
+    });
+
+    it('creates nothing for an unknown Google user who has not chosen a role yet', async () => {
+      prisma.authIdentity.findUnique.mockResolvedValue(null);
+      prisma.user.findUnique.mockResolvedValue(null);
+      const outcome = await service.completeGoogle(google, {
+        purpose: 'oauth_state',
+        locale: 'ru',
+        nonce: 'n',
+      });
+      expect(outcome).toMatchObject({ ok: true, kind: 'signup' });
+      expect(prisma.user.create).not.toHaveBeenCalled();
+      expect(consents.record).not.toHaveBeenCalled();
+      expect(tokens.issueOneTime).not.toHaveBeenCalled();
+    });
+
+    it('still signs in a known Google identity that started on the sign-in page', async () => {
+      prisma.authIdentity.findUnique.mockResolvedValue({ userId: USER_ID });
+      const outcome = await service.completeGoogle(google, {
+        purpose: 'oauth_state',
+        locale: 'ru',
+        nonce: 'n',
+      });
+      expect(outcome).toMatchObject({ ok: true, kind: 'code' });
+    });
+
+    it('role step: creates the chosen role with both consents from the signed token', async () => {
+      prisma.authIdentity.findUnique.mockResolvedValue(null);
+      prisma.user.findUnique.mockResolvedValueOnce(null).mockResolvedValue(row);
+      const outcome = await service.completeGoogle(google, {
+        purpose: 'oauth_state',
+        locale: 'ru',
+        nonce: 'n',
+      });
+      if (!outcome.ok || outcome.kind !== 'signup') throw new Error('expected signup');
+      prisma.user.create.mockResolvedValue({ id: USER_ID });
+
+      const session = await service.completeGoogleSignup({
+        signupToken: outcome.signupToken,
+        role: 'TALENT',
+        locale: 'ko',
+        acceptTerms: true,
+      });
+
+      expect(session.user.id).toBe(USER_ID);
+      const { data } = firstCallArg(prisma.user.create) as {
+        data: { email: string; roles: string[]; locale: string; passwordHash: null };
+      };
+      expect(data).toMatchObject({
+        email: 'parent@example.com',
+        roles: ['TALENT'],
+        locale: 'ko',
+        passwordHash: null,
+      });
+      expect(consents.record).toHaveBeenCalledWith(USER_ID, ['TERMS', 'PRIVACY'], 'ko', prisma);
+    });
+
+    it('role step: a forged, expired or foreign token is NOT_FOUND, an existing account CONFLICT', async () => {
+      const bad = { role: 'CLIENT' as const, locale: 'en' as const, acceptTerms: true as const };
+      await expect(
+        service.completeGoogleSignup({ ...bad, signupToken: 'x'.repeat(40) }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      const access = await jwt.signAsync({ sub: USER_ID, roles: ['ADMIN'] });
+      await expect(
+        service.completeGoogleSignup({ ...bad, signupToken: access }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+
+      const signupToken = await jwt.signAsync({
+        purpose: 'oauth_signup',
+        googleId: 'g-1',
+        email: 'parent@example.com',
+        emailVerified: true,
+        displayName: 'Parent',
+        locale: 'en',
+      });
+      prisma.user.create.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('dup', { code: 'P2002', clientVersion: 'test' }),
+      );
+      await expect(service.completeGoogleSignup({ ...bad, signupToken })).rejects.toMatchObject({
+        code: 'CONFLICT',
+      });
     });
 
     it('exchange spends the code and starts a session', async () => {

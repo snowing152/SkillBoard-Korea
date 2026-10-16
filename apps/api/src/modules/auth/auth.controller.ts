@@ -29,6 +29,7 @@ import { UserAgent } from '../../common/http/user-agent.decorator.js';
 import { AuthService, type GoogleOutcome } from './auth.service.js';
 import { AuthSessionDto } from './dto/auth-session.dto.js';
 import { ExchangeDto } from './dto/exchange.dto.js';
+import { GoogleCompleteDto } from './dto/google-complete.dto.js';
 import { GoogleStartQueryDto } from './dto/google-start-query.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { LogoutDto } from './dto/logout.dto.js';
@@ -37,6 +38,7 @@ import { PasswordResetRequestDto } from './dto/password-reset-request.dto.js';
 import { RefreshDto } from './dto/refresh.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { TokenDto } from './dto/token.dto.js';
+import { OAUTH_NONCE_CLEAR_OPTIONS, OAUTH_NONCE_COOKIE, readCookie } from './google-cookie.js';
 import { GoogleCallbackGuard, GoogleStartGuard } from './google.guards.js';
 
 /** 3 requests per 15 minutes per IP: mail-sending routes (ADR 0018). */
@@ -139,7 +141,9 @@ export class AuthController {
     @Res() res: Response,
     @Query('state') state?: string,
   ): Promise<void> {
-    const verified = await this.auth.verifyOAuthState(state);
+    const verified = await this.auth.verifyOAuthState(state, readCookie(req, OAUTH_NONCE_COOKIE));
+    // One flow, one nonce: clear it whatever happens next.
+    res.clearCookie(OAUTH_NONCE_COOKIE, OAUTH_NONCE_CLEAR_OPTIONS);
     const locale = verified?.locale ?? DEFAULT_LOCALE;
     if (!verified || !req.oauthProfile) {
       res.redirect(this.auth.oauthRedirectUrl(locale, { error: 'OAUTH_FAILED' }));
@@ -149,10 +153,25 @@ export class AuthController {
     const outcome = await this.auth
       .completeGoogle(req.oauthProfile, verified)
       .catch((): GoogleOutcome => ({ ok: false, error: 'OAUTH_FAILED' }));
-    const params = outcome.ok
-      ? { code: outcome.code, ...(verified.next ? { next: verified.next } : {}) }
-      : { error: outcome.error };
+    const next = verified.next ? { next: verified.next } : {};
+    const params = !outcome.ok
+      ? { error: outcome.error }
+      : outcome.kind === 'code'
+        ? { code: outcome.code, ...next }
+        : { signup: outcome.signupToken, ...next };
     res.redirect(this.auth.oauthRedirectUrl(locale, params));
+  }
+
+  @Post('google/complete')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ZodSerializerDto(AuthSessionDto)
+  @ApiOkResponse({ type: AuthSessionDto })
+  completeGoogle(
+    @Body() body: GoogleCompleteDto,
+    @UserAgent() userAgent?: string,
+  ): Promise<AuthSession> {
+    return this.auth.completeGoogleSignup(body, userAgent);
   }
 
   @Post('exchange')

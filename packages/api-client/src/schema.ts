@@ -180,6 +180,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/auth/google/complete': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['AuthController_completeGoogle'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/auth/exchange': {
     parameters: {
       query?: never;
@@ -384,6 +400,15 @@ export interface components {
       token: string;
       password: string;
     };
+    GoogleCompleteDto: {
+      signupToken: string;
+      /** @enum {string} */
+      role: 'TALENT' | 'CLIENT';
+      /** @enum {string} */
+      locale: 'en' | 'ko' | 'ru';
+      /** @enum {boolean} */
+      acceptTerms: true;
+    };
     ExchangeDto: {
       code: string;
     };
@@ -410,6 +435,8 @@ export interface components {
     ChangePasswordDto: {
       currentPassword: string;
       newPassword: string;
+      /** @description The caller's own refresh token: every other session is signed out, this one stays. Omit to sign out all. */
+      refreshToken?: string;
     };
     ConsentListDto: {
       items: {
@@ -1223,9 +1250,9 @@ export interface operations {
   AuthController_googleStart: {
     parameters: {
       query: {
-        role: 'TALENT' | 'CLIENT';
+        role?: 'TALENT' | 'CLIENT';
         locale: 'en' | 'ko' | 'ru';
-        acceptTerms: 'true';
+        acceptTerms?: 'true';
         next?: string;
       };
       header?: never;
@@ -1260,6 +1287,29 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  AuthController_completeGoogle: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GoogleCompleteDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AuthSessionDto'];
+        };
       };
     };
   };

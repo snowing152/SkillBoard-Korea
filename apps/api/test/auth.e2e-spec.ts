@@ -21,6 +21,7 @@ import { setupApp } from '../src/setup-app.js';
 const EMAILS = {
   main: 'e2e-auth@skillboard.local',
   google: 'e2e-auth-google@skillboard.local',
+  googleNew: 'e2e-auth-google-new@skillboard.local',
   unknown: 'e2e-auth-nobody@skillboard.local',
 };
 const PASSWORD = 'Password123!';
@@ -230,7 +231,9 @@ describe('auth and accounts (e2e)', () => {
       .post('/v1/auth/refresh')
       .send({ refreshToken: first.refreshToken })
       .expect(401);
-    expect(await prisma.refreshToken.count({ where: { userId, revokedAt: null } })).toBe(0);
+    expect(
+      await prisma.refreshToken.count({ where: { userId, revokedAt: null, rotatedAt: null } }),
+    ).toBe(0);
   });
 
   it('logs out one device and refuses its refresh token afterwards', async () => {
@@ -344,7 +347,7 @@ describe('auth and accounts (e2e)', () => {
       { id: 'e2e-google-sub-1', email: EMAILS.google, emailVerified: true, displayName: 'Parent' },
       { purpose: 'oauth_state', role: 'CLIENT', locale: 'en', nonce: 'e2e' },
     );
-    if (!outcome.ok) throw new Error(`unexpected ${outcome.error}`);
+    if (!outcome.ok || outcome.kind !== 'code') throw new Error('expected an exchange code');
 
     const res = await request(server)
       .post('/v1/auth/exchange')
@@ -359,6 +362,13 @@ describe('auth and accounts (e2e)', () => {
     });
     expect(await prisma.authIdentity.count({ where: { userId: session.user.id } })).toBe(1);
 
+    // The same Google user, starting from /sign-in, is simply signed in: no role step.
+    const again = await auth.completeGoogle(
+      { id: 'e2e-google-sub-1', email: EMAILS.google, emailVerified: true, displayName: 'Parent' },
+      { purpose: 'oauth_state', locale: 'en', nonce: 'e2e' },
+    );
+    expect(again).toMatchObject({ ok: true, kind: 'code' });
+
     // The code is single-use.
     await request(server).post('/v1/auth/exchange').send({ code: outcome.code }).expect(404);
 
@@ -369,5 +379,75 @@ describe('auth and accounts (e2e)', () => {
       .send({ currentPassword: PASSWORD, newPassword: NEW_PASSWORD })
       .expect(403);
     expect(ErrorResponseSchema.parse(denied.body).error.details?.[0]?.code).toBe('NO_PASSWORD_SET');
+  });
+
+  it('sends an unknown Google user to the role step and creates the account only after it', async () => {
+    const auth = app.get(AuthService);
+    const profile = {
+      id: 'e2e-google-sub-2',
+      email: EMAILS.googleNew,
+      emailVerified: true,
+      displayName: 'Newcomer',
+    };
+    const outcome = await auth.completeGoogle(profile, {
+      purpose: 'oauth_state',
+      locale: 'ko',
+      nonce: 'e2e',
+    });
+    if (!outcome.ok || outcome.kind !== 'signup') throw new Error('expected the role step');
+    expect(await prisma.user.count({ where: { email: EMAILS.googleNew } })).toBe(0);
+
+    const body = { signupToken: outcome.signupToken, role: 'TALENT', locale: 'ko' };
+    await request(server)
+      .post('/v1/auth/google/complete')
+      .send({ ...body, acceptTerms: false })
+      .expect(400);
+    expect(await prisma.user.count({ where: { email: EMAILS.googleNew } })).toBe(0);
+
+    const res = await request(server)
+      .post('/v1/auth/google/complete')
+      .send({ ...body, acceptTerms: true })
+      .expect(200);
+    const session = AuthSessionSchema.parse(res.body);
+    expect(session.user).toMatchObject({
+      roles: ['TALENT'],
+      locale: 'ko',
+      emailVerified: true,
+      pendingConsents: [],
+    });
+
+    // The token cannot be replayed to get into the account it created.
+    await request(server)
+      .post('/v1/auth/google/complete')
+      .send({ ...body, acceptTerms: true })
+      .expect(409);
+    await request(server)
+      .post('/v1/auth/google/complete')
+      .send({ ...body, signupToken: 'x'.repeat(40), acceptTerms: true })
+      .expect(404);
+  });
+
+  it('a password change signs out every other device and keeps the current one', async () => {
+    const here = AuthSessionSchema.parse((await login(NEW_PASSWORD).expect(200)).body);
+    const elsewhere = AuthSessionSchema.parse((await login(NEW_PASSWORD).expect(200)).body);
+
+    await request(server)
+      .post('/v1/me/password')
+      .set(bearer(here.accessToken))
+      .send({
+        currentPassword: NEW_PASSWORD,
+        newPassword: PASSWORD,
+        refreshToken: here.refreshToken,
+      })
+      .expect(204);
+
+    await request(server)
+      .post('/v1/auth/refresh')
+      .send({ refreshToken: elsewhere.refreshToken })
+      .expect(401);
+    await request(server)
+      .post('/v1/auth/refresh')
+      .send({ refreshToken: here.refreshToken })
+      .expect(200);
   });
 });

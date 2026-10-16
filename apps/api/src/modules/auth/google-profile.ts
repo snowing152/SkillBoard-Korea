@@ -17,9 +17,26 @@ export type GoogleProfile = {
  */
 export const OAuthStateSchema = z.object({
   purpose: z.literal('oauth_state'),
-  role: z.enum(SIGNUP_ROLES),
+  /** Absent when the flow started on /sign-in: an unknown Google user then picks a role first. */
+  role: z.enum(SIGNUP_ROLES).optional(),
   locale: LocaleSchema,
   next: SafePathSchema.optional(),
+  /** Also stored in an httpOnly cookie on the API origin; the callback needs both to match. */
   nonce: z.string().min(1),
 });
 export type OAuthState = z.infer<typeof OAuthStateSchema>;
+
+/**
+ * What the role-choice step needs to create the account later: the Google identity as the callback saw
+ * it. Signed, short-lived, no `sub` (the access guard rejects it), and it travels from the API to the
+ * web server only, then sits in an httpOnly cookie there.
+ */
+export const OAuthSignupSchema = z.object({
+  purpose: z.literal('oauth_signup'),
+  googleId: z.string().min(1),
+  email: z.string().min(3),
+  emailVerified: z.boolean(),
+  displayName: z.string().nullable(),
+  locale: LocaleSchema,
+});
+export type OAuthSignup = z.infer<typeof OAuthSignupSchema>;

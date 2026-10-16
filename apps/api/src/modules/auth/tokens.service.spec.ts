@@ -64,11 +64,12 @@ describe('TokensService', () => {
       expect(issued.expiresAt).toEqual(data.expiresAt);
     });
 
-    it('rotates a live token: revokes it and issues the next one', async () => {
+    it('rotates a live token: marks it rotated and issues the next one', async () => {
       prisma.refreshToken.findUnique.mockResolvedValue({
         id: 'row-1',
         userId: USER_ID,
         expiresAt: secondsAhead(1000),
+        rotatedAt: null,
         revokedAt: null,
       });
       const rotated = await service.rotate('presented-token', 'ua');
@@ -77,8 +78,8 @@ describe('TokensService', () => {
         where: { tokenHash: sha('presented-token') },
       });
       expect(firstCallArg(prisma.refreshToken.updateMany)).toEqual({
-        where: { id: 'row-1', revokedAt: null },
-        data: { revokedAt: NOW },
+        where: { id: 'row-1', rotatedAt: null, revokedAt: null },
+        data: { rotatedAt: NOW },
       });
       expect(rotated.userId).toBe(USER_ID);
       expect(prisma.refreshToken.create).toHaveBeenCalledTimes(1);
@@ -89,7 +90,8 @@ describe('TokensService', () => {
         id: 'row-1',
         userId: USER_ID,
         expiresAt: secondsAhead(1000),
-        revokedAt: secondsAgo(5),
+        rotatedAt: secondsAgo(5),
+        revokedAt: null,
       });
       const rotated = await service.rotate('presented-token', undefined);
 
@@ -103,29 +105,62 @@ describe('TokensService', () => {
         id: 'row-1',
         userId: USER_ID,
         expiresAt: secondsAhead(1000),
-        revokedAt: secondsAgo(GRACE_SECONDS + 1),
-      });
-      await expect(service.rotate('presented-token', undefined)).rejects.toMatchObject({
-        code: 'UNAUTHENTICATED',
-      });
-      expect(firstCallArg(prisma.refreshToken.updateMany)).toMatchObject({
-        where: { userId: USER_ID, OR: [{ revokedAt: null }, expect.anything()] },
-      });
-      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
-    });
-
-    it('treats an expired token like a replay', async () => {
-      prisma.refreshToken.findUnique.mockResolvedValue({
-        id: 'row-1',
-        userId: USER_ID,
-        expiresAt: secondsAgo(1),
+        rotatedAt: secondsAgo(GRACE_SECONDS + 1),
         revokedAt: null,
       });
       await expect(service.rotate('presented-token', undefined)).rejects.toMatchObject({
         code: 'UNAUTHENTICATED',
       });
-      expect(prisma.refreshToken.updateMany).toHaveBeenCalledTimes(1);
+      expect(firstCallArg(prisma.refreshToken.updateMany)).toEqual({
+        where: { userId: USER_ID, revokedAt: null },
+        data: { revokedAt: NOW },
+      });
       expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+    });
+
+    it('answers a plain 401 for an expired token and revokes nothing', async () => {
+      prisma.refreshToken.findUnique.mockResolvedValue({
+        id: 'row-1',
+        userId: USER_ID,
+        expiresAt: secondsAgo(1),
+        rotatedAt: null,
+        revokedAt: null,
+      });
+      await expect(service.rotate('presented-token', undefined)).rejects.toMatchObject({
+        code: 'UNAUTHENTICATED',
+      });
+      expect(prisma.refreshToken.updateMany).not.toHaveBeenCalled();
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+    });
+
+    it('an expired token that was also rotated long ago is just expired: still revokes nothing', async () => {
+      prisma.refreshToken.findUnique.mockResolvedValue({
+        id: 'row-1',
+        userId: USER_ID,
+        expiresAt: secondsAgo(1),
+        rotatedAt: secondsAgo(GRACE_SECONDS + 5),
+        revokedAt: null,
+      });
+      await expect(service.rotate('presented-token', undefined)).rejects.toMatchObject({
+        code: 'UNAUTHENTICATED',
+      });
+      expect(prisma.refreshToken.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('a token revoked on purpose is a plain 401, even if it was rotated seconds ago', async () => {
+      prisma.refreshToken.findUnique.mockResolvedValue({
+        id: 'row-1',
+        userId: USER_ID,
+        expiresAt: secondsAhead(1000),
+        rotatedAt: secondsAgo(3),
+        revokedAt: secondsAgo(1),
+      });
+      await expect(service.rotate('presented-token', undefined)).rejects.toMatchObject({
+        code: 'UNAUTHENTICATED',
+      });
+      // Nothing is minted after a password reset or "log out everywhere", and nothing else is revoked.
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+      expect(prisma.refreshToken.updateMany).not.toHaveBeenCalled();
     });
 
     it('answers 401 for an unknown token without revoking anything', async () => {
@@ -136,23 +171,12 @@ describe('TokensService', () => {
       expect(prisma.refreshToken.updateMany).not.toHaveBeenCalled();
     });
 
-    it('marks deliberate revocations as older than the grace, so a later replay is detected', async () => {
+    it('revokeAll stamps every live token of the user', async () => {
       await service.revokeAll(USER_ID);
-      const { data } = firstCallArg(prisma.refreshToken.updateMany) as {
-        data: { revokedAt: Date };
-      };
-      expect(NOW.getTime() - data.revokedAt.getTime()).toBeGreaterThan(GRACE_SECONDS * 1000);
-    });
-
-    it('revokeAll also reaches tokens rotated inside the grace window', async () => {
-      await service.revokeAll(USER_ID);
-      const arg = firstCallArg(prisma.refreshToken.updateMany) as {
-        where: { OR: [{ revokedAt: null }, { revokedAt: { gt: Date } }] };
-      };
-      expect(arg.where.OR[0]).toEqual({ revokedAt: null });
-      expect(NOW.getTime() - arg.where.OR[1].revokedAt.gt.getTime()).toBeGreaterThan(
-        GRACE_SECONDS * 1000,
-      );
+      expect(firstCallArg(prisma.refreshToken.updateMany)).toEqual({
+        where: { userId: USER_ID, revokedAt: null },
+        data: { revokedAt: NOW },
+      });
     });
 
     it('logout of one token only touches that user’s row', async () => {
@@ -160,6 +184,20 @@ describe('TokensService', () => {
       expect(firstCallArg(prisma.refreshToken.updateMany)).toMatchObject({
         where: { userId: USER_ID, tokenHash: sha('presented-token'), revokedAt: null },
       });
+    });
+
+    it('revokeAllExcept spares the named token and reaches the rest', async () => {
+      await service.revokeAllExcept(USER_ID, 'keep-this-one');
+      expect(firstCallArg(prisma.refreshToken.updateMany)).toEqual({
+        where: { userId: USER_ID, revokedAt: null, tokenHash: { not: sha('keep-this-one') } },
+        data: { revokedAt: NOW },
+      });
+    });
+
+    it('revokeAllExcept without a token keeps nothing', async () => {
+      await service.revokeAllExcept(USER_ID, undefined);
+      const arg = firstCallArg(prisma.refreshToken.updateMany) as { where: object };
+      expect(arg.where).not.toHaveProperty('tokenHash');
     });
   });
 

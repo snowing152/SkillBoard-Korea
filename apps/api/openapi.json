@@ -236,7 +236,7 @@
         "parameters": [
           {
             "name": "role",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
               "type": "string",
@@ -254,7 +254,7 @@
           },
           {
             "name": "acceptTerms",
-            "required": true,
+            "required": false,
             "in": "query",
             "schema": {
               "type": "string",
@@ -296,6 +296,35 @@
         "responses": {
           "302": {
             "description": "Redirect to the web app with ?code= or ?error="
+          }
+        },
+        "tags": ["auth"]
+      }
+    },
+    "/v1/auth/google/complete": {
+      "post": {
+        "operationId": "AuthController_completeGoogle",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleCompleteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSessionDto"
+                }
+              }
+            }
           }
         },
         "tags": ["auth"]
@@ -893,6 +922,29 @@
         },
         "required": ["token", "password"]
       },
+      "GoogleCompleteDto": {
+        "type": "object",
+        "properties": {
+          "signupToken": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 4000
+          },
+          "role": {
+            "type": "string",
+            "enum": ["TALENT", "CLIENT"]
+          },
+          "locale": {
+            "type": "string",
+            "enum": ["en", "ko", "ru"]
+          },
+          "acceptTerms": {
+            "type": "boolean",
+            "enum": [true]
+          }
+        },
+        "required": ["signupToken", "role", "locale", "acceptTerms"]
+      },
       "ExchangeDto": {
         "type": "object",
         "properties": {
@@ -984,6 +1036,12 @@
             "type": "string",
             "minLength": 8,
             "maxLength": 128
+          },
+          "refreshToken": {
+            "description": "The caller's own refresh token: every other session is signed out, this one stays. Omit to sign out all.",
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 200
           }
         },
         "required": ["currentPassword", "newPassword"]

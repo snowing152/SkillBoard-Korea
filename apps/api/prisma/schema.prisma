@@ -118,7 +118,8 @@ model RefreshToken {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userAgent String?
   expiresAt DateTime
-  revokedAt DateTime?
+  rotatedAt DateTime? // set when /refresh exchanged it for the next token; presenting it again is replay
+  revokedAt DateTime? // set on purpose (logout, password change or reset, theft response); plain 401
   createdAt DateTime  @default(now())
 
   @@index([userId])
