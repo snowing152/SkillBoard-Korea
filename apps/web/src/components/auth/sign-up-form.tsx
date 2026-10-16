@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { type Register, RegisterSchema, SIGNUP_ROLES } from '@skillboard/shared';
+import { type Register, RegisterSchema } from '@skillboard/shared';
 import { useLocale, useTranslations } from 'next-intl';
 import { useState, useTransition } from 'react';
 import { type Resolver, useForm, useWatch } from 'react-hook-form';
@@ -9,13 +9,13 @@ import { signUp } from '@/actions/auth';
 import { FieldMessage, TextField } from '@/components/auth/auth-fields';
 import { googleStartUrl } from '@/components/auth/google-url';
 import { OrDivider } from '@/components/auth/google-button';
+import { RoleCards } from '@/components/auth/role-cards';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TermsLink } from '@/components/auth/terms-link';
 import { Link, useRouter } from '@/i18n/navigation';
 import { type ActionFailure, errorMessageKey } from '@/lib/api-errors';
-import { cn } from '@/lib/utils';
 
 /**
  * What the form holds while the user types. The schema wants `acceptTerms: true`, but an unticked box
@@ -27,11 +27,6 @@ type Props = {
   /** `<API origin>`; null when Google sign-in is switched off. */
   googleBase: string | null;
 };
-
-const ROLE_KEYS = {
-  TALENT: { label: 'roleTalent', hint: 'roleTalentHint' },
-  CLIENT: { label: 'roleClient', hint: 'roleClientHint' },
-} as const;
 
 export function SignUpForm({ googleBase }: Props) {
   const t = useTranslations('auth.signUp');
@@ -79,31 +74,12 @@ export function SignUpForm({ googleBase }: Props) {
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-2 text-body-sm font-medium">{t('roleLegend')}</legend>
-        {SIGNUP_ROLES.map((value) => (
-          <label
-            key={value}
-            className={cn(
-              'flex min-h-11 cursor-pointer flex-col gap-0.5 rounded-card border bg-card p-4 transition-colors has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/40',
-              role === value ? 'border-primary bg-tag' : 'border-input',
-            )}
-          >
-            <span className="flex items-center gap-3">
-              <input
-                type="radio"
-                value={value}
-                className="size-4 accent-primary"
-                {...register('role')}
-              />
-              <span className="text-body font-medium">{t(ROLE_KEYS[value].label)}</span>
-            </span>
-            <span className="pl-7 text-label text-muted-foreground">
-              {t(ROLE_KEYS[value].hint)}
-            </span>
-          </label>
-        ))}
-      </fieldset>
+      <RoleCards
+        value={role}
+        onChange={(value) => {
+          setValue('role', value);
+        }}
+      />
 
       <TextField
         id="displayName"

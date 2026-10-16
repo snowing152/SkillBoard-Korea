@@ -3,7 +3,6 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { GoogleLink, OrDivider } from '@/components/auth/google-button';
 import { googleStartUrl } from '@/components/auth/google-url';
 import { SignInForm } from '@/components/auth/sign-in-form';
-import { TermsLink } from '@/components/auth/terms-link';
 import { PageContainer, PageHeader } from '@/components/ds/page';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { env } from '@/env';
@@ -44,15 +43,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Searc
         {googleEnabled && (
           <>
             <OrDivider />
-            <GoogleLink
-              href={googleStartUrl(env.NEXT_PUBLIC_API_URL, { role: 'CLIENT', locale, next })}
-            />
-            <p className="text-label text-muted-foreground">
-              {t.rich('googleNotice', {
-                terms: (chunks) => <TermsLink href="/legal/terms">{chunks}</TermsLink>,
-                privacy: (chunks) => <TermsLink href="/legal/privacy">{chunks}</TermsLink>,
-              })}
-            </p>
+            <GoogleLink href={googleStartUrl(env.NEXT_PUBLIC_API_URL, { locale, next })} />
           </>
         )}
       </div>

@@ -1,6 +1,6 @@
 # 0020. Refresh tokens: returned in the body, web keeps them in a second httpOnly cookie, silent refresh in the proxy
 
-Date: 2026-10-14 · Status: Accepted · Refines 0009 and 0019
+Date: 2026-10-14 · Status: Accepted (rotation bullet amended by 0024: expiry revokes nothing, `rotatedAt` separates rotation from revocation) · Refines 0009 and 0019
 
 ## Context
 

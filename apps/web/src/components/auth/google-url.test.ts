@@ -4,7 +4,13 @@ import { googleStartUrl } from './google-url';
 describe('googleStartUrl', () => {
   it('builds the API start URL with role, locale and the consent flag', () => {
     expect(googleStartUrl('http://localhost:3001', { role: 'CLIENT', locale: 'ko' })).toBe(
-      'http://localhost:3001/v1/auth/google?role=CLIENT&locale=ko&acceptTerms=true',
+      'http://localhost:3001/v1/auth/google?locale=ko&role=CLIENT&acceptTerms=true',
+    );
+  });
+
+  it('sends neither role nor consent from the sign-in page', () => {
+    expect(googleStartUrl('http://localhost:3001', { locale: 'en' })).toBe(
+      'http://localhost:3001/v1/auth/google?locale=en',
     );
   });
 

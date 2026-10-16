@@ -1,6 +1,6 @@
 # Accounts and auth: sign-up, Google, email verification, refresh, password reset, settings
 
-Status: Implemented · Model: Sonnet (Opus reviews the token rotation and the Google callback) · ADRs: 0009,
+Status: Implemented (hardened by ADR 0024) · Model: Sonnet (Opus reviews the token rotation and the Google callback) · ADRs: 0009,
 0013, 0017, 0018, 0019, 0020 · Branch: `feat/accounts` · Order: 2 of 6 · Depends on `legal`
 (`ConsentsService`, `LEGAL_VERSIONS`).
 
@@ -29,22 +29,23 @@ about auth are closed, and nothing in the browser ever holds a token.
 All routes are in `modules/auth/` unless noted, `@Public()` unless marked `user`, throttled 10/min per IP
 (existing controller decorator). Stricter per-route limits in the last column.
 
-| Method and route                       | Auth   | Request schema               | Response schema                         | Errors and limits                                                                                                          |
-| -------------------------------------- | ------ | ---------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `POST /v1/auth/register`               | public | `RegisterSchema` (extended)  | `AuthSessionSchema` (extended)          | `VALIDATION_FAILED`, `CONFLICT`; sends the verification email                                                              |
-| `POST /v1/auth/login`                  | public | `LoginSchema`                | `AuthSessionSchema`                     | `UNAUTHENTICATED` (one message for all causes)                                                                             |
-| `POST /v1/auth/refresh`                | public | `RefreshSchema`              | `AuthSessionSchema`                     | `UNAUTHENTICATED` (expired, unknown or reused → all tokens of that user revoked, ADR 0020)                                 |
-| `POST /v1/auth/logout`                 | user   | `LogoutSchema`               | 204                                     | revokes the given token, or all of the user's tokens with `all: true` (mobile refreshes first if its access token expired) |
-| `POST /v1/auth/verify-email/request`   | user   | –                            | 204                                     | 3 per 15 min per IP; 204 even if already verified                                                                          |
-| `POST /v1/auth/verify-email/confirm`   | public | `TokenSchema`                | 204                                     | `NOT_FOUND` (unknown, used or expired token)                                                                               |
-| `POST /v1/auth/password-reset/request` | public | `PasswordResetRequestSchema` | 204                                     | 3 per 15 min per IP; always 204 (no account enumeration)                                                                   |
-| `POST /v1/auth/password-reset/confirm` | public | `PasswordResetConfirmSchema` | 204                                     | `NOT_FOUND` (bad token); revokes all refresh tokens                                                                        |
-| `GET /v1/auth/google`                  | public | `GoogleStartQuerySchema`     | 302 to Google                           | `NOT_FOUND` when Google env is unset                                                                                       |
-| `GET /v1/auth/google/callback`         | public | Passport                     | 302 to `WEB_URL/<locale>/auth/callback` | on failure redirects with `?error=<OAUTH_CALLBACK_ERRORS>` instead of `?code=`                                             |
-| `POST /v1/auth/exchange`               | public | `ExchangeSchema`             | `AuthSessionSchema`                     | `NOT_FOUND` (code unknown, used or older than 60 s)                                                                        |
-| `GET /v1/me`                           | user   | –                            | `AuthUserSchema`                        | `UNAUTHENTICATED`                                                                                                          |
-| `PATCH /v1/me`                         | user   | `UpdateMeSchema`             | `AuthUserSchema`                        | `VALIDATION_FAILED`                                                                                                        |
-| `POST /v1/me/password`                 | user   | `ChangePasswordSchema`       | 204                                     | `FORBIDDEN` (wrong current password, or Google-only account: `details[0].code` says which)                                 |
+| Method and route                       | Auth   | Request schema               | Response schema                         | Errors and limits                                                                                                                                                                    |
+| -------------------------------------- | ------ | ---------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `POST /v1/auth/register`               | public | `RegisterSchema` (extended)  | `AuthSessionSchema` (extended)          | `VALIDATION_FAILED`, `CONFLICT`; sends the verification email                                                                                                                        |
+| `POST /v1/auth/login`                  | public | `LoginSchema`                | `AuthSessionSchema`                     | `UNAUTHENTICATED` (one message for all causes)                                                                                                                                       |
+| `POST /v1/auth/refresh`                | public | `RefreshSchema`              | `AuthSessionSchema`                     | `UNAUTHENTICATED` (expired, revoked or unknown → plain 401; a rotated token presented after the grace window → all tokens of that user revoked, ADR 0020/0024)                       |
+| `POST /v1/auth/logout`                 | user   | `LogoutSchema`               | 204                                     | revokes the given token, or all of the user's tokens with `all: true` (mobile refreshes first if its access token expired)                                                           |
+| `POST /v1/auth/verify-email/request`   | user   | –                            | 204                                     | 3 per 15 min per IP; 204 even if already verified                                                                                                                                    |
+| `POST /v1/auth/verify-email/confirm`   | public | `TokenSchema`                | 204                                     | `NOT_FOUND` (unknown, used or expired token)                                                                                                                                         |
+| `POST /v1/auth/password-reset/request` | public | `PasswordResetRequestSchema` | 204                                     | 3 per 15 min per IP; always 204 (no account enumeration)                                                                                                                             |
+| `POST /v1/auth/password-reset/confirm` | public | `PasswordResetConfirmSchema` | 204                                     | `NOT_FOUND` (bad token); revokes all refresh tokens                                                                                                                                  |
+| `GET /v1/auth/google`                  | public | `GoogleStartQuerySchema`     | 302 to Google                           | `NOT_FOUND` when Google env is unset                                                                                                                                                 |
+| `GET /v1/auth/google/callback`         | public | Passport                     | 302 to `WEB_URL/<locale>/auth/callback` | on failure redirects with `?error=<OAUTH_CALLBACK_ERRORS>` instead of `?code=`                                                                                                       |
+| `POST /v1/auth/google/complete`        | public | `GoogleCompleteSchema`       | `AuthSessionSchema`                     | `NOT_FOUND` (bad or expired signup token), `CONFLICT` (account exists); role step of ADR 0024                                                                                        |
+| `POST /v1/auth/exchange`               | public | `ExchangeSchema`             | `AuthSessionSchema`                     | `NOT_FOUND` (code unknown, used or older than 60 s)                                                                                                                                  |
+| `GET /v1/me`                           | user   | –                            | `AuthUserSchema`                        | `UNAUTHENTICATED`                                                                                                                                                                    |
+| `PATCH /v1/me`                         | user   | `UpdateMeSchema`             | `AuthUserSchema`                        | `VALIDATION_FAILED`                                                                                                                                                                  |
+| `POST /v1/me/password`                 | user   | `ChangePasswordSchema`       | 204                                     | `FORBIDDEN` (wrong current password, or Google-only account: `details[0].code` says which); revokes every other session (`refreshToken` in the body names the one to keep, ADR 0024) |
 
 Schemas in `packages/shared/src/auth/` (extend `auth.schema.ts`; move tokens to `tokens.schema.ts`):
 
@@ -93,7 +94,11 @@ next, nonce }`, 10 min, `JWT_ACCESS_SECRET`; the access guard rejects it because
   role, `emailVerifiedAt = now()` when Google says `email_verified`, `passwordHash = null`, and record the
   sign-up consents. Then create an `OAUTH_EXCHANGE` token and redirect to
   `${WEB_URL}/${locale}/auth/callback?code=…&next=…`. Nothing secret is ever in a URL except that
-  single-use 60 s code.
+  single-use 60 s code. Amended by ADR 0024: the start route also sets an `HttpOnly` nonce cookie that the
+  callback must match with the `state` nonce (login CSRF); when the query has no `role`/`acceptTerms`
+  (sign-in page) and nobody exists yet, nothing is created: the callback redirects with a signed 10 minute
+  `signup=…` token instead of `code`, the web keeps it in an `HttpOnly` cookie, and `/sign-up/google` asks
+  for role and consent before `POST /v1/auth/google/complete` creates the account.
 - `login` of an unverified user succeeds (they must be able to reach "resend"); gated actions check
   `emailVerifiedAt` themselves (`contact-reveal`, `moderation`). A profile can be created, edited and
   set to `PUBLISHED` without verification, but it is not publicly visible until the owner's email is

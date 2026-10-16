@@ -11,6 +11,7 @@ import {
 import { revalidatePath } from 'next/cache';
 import { redirect } from '@/i18n/navigation';
 import { apiAsUser } from '@/lib/api';
+import { getRefreshToken } from '@/lib/session';
 import { type ActionResult, toActionFailure } from '@/lib/api-errors';
 
 /**
@@ -50,7 +51,15 @@ export async function changePassword(input: ChangePassword): Promise<ActionResul
   if (!client) return { ok: false, code: 'UNAUTHENTICATED' };
 
   try {
-    const { error, response } = await client.POST('/v1/me/password', { body: parsed.data });
+    // The refresh cookie names this device's session: the API signs out every other one.
+    const refreshToken = await getRefreshToken();
+    const { error, response } = await client.POST('/v1/me/password', {
+      body: {
+        currentPassword: parsed.data.currentPassword,
+        newPassword: parsed.data.newPassword,
+        ...(refreshToken ? { refreshToken } : {}),
+      },
+    });
     if (!response.ok) return toActionFailure(error);
   } catch (err: unknown) {
     return toActionFailure(err);

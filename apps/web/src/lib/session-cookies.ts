@@ -6,6 +6,9 @@ import { APP_SLUG } from '@skillboard/shared';
  */
 export const SESSION_COOKIE = `${APP_SLUG}_session`;
 export const REFRESH_COOKIE = `${APP_SLUG}_refresh`;
+/** Holds the signed Google sign-up token between the callback and the role-choice step (10 minutes). */
+export const GOOGLE_SIGNUP_COOKIE = `${APP_SLUG}_google_signup`;
+export const GOOGLE_SIGNUP_MAX_AGE_SECONDS = 600;
 
 export function cookieOptions(maxAgeSeconds: number) {
   return {

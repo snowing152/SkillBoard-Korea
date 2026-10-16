@@ -5,7 +5,14 @@ import { getPathname } from '@/i18n/navigation';
 import { oauthErrorKey } from '@/lib/oauth-error';
 import { defaultLandingPath } from '@/lib/auth-forms';
 import { safeNextPath } from '@/lib/safe-path';
-import { cookieOptions, REFRESH_COOKIE, secondsUntil, SESSION_COOKIE } from '@/lib/session-cookies';
+import {
+  cookieOptions,
+  GOOGLE_SIGNUP_COOKIE,
+  GOOGLE_SIGNUP_MAX_AGE_SECONDS,
+  REFRESH_COOKIE,
+  secondsUntil,
+  SESSION_COOKIE,
+} from '@/lib/session-cookies';
 import { routing } from '@/i18n/routing';
 
 type Params = { params: Promise<{ locale: string }> };
@@ -24,6 +31,24 @@ export async function GET(request: NextRequest, { params }: Params) {
   const search = request.nextUrl.searchParams;
   const error = search.get('error');
   const code = search.get('code');
+  const signup = search.get('signup');
+
+  // A Google user without an account: the API created nothing and handed over a signed token. It goes
+  // into an httpOnly cookie (never into browser JavaScript or the page URL) for the role-choice step.
+  if (error === null && code === null && signup !== null && signup.length <= 4000) {
+    const next = search.get('next');
+    const safe = safeNextPath(next ?? undefined, '');
+    const response = go(
+      safe ? `/sign-up/google?next=${encodeURIComponent(safe)}` : '/sign-up/google',
+    );
+    response.cookies.set(
+      GOOGLE_SIGNUP_COOKIE,
+      signup,
+      cookieOptions(GOOGLE_SIGNUP_MAX_AGE_SECONDS),
+    );
+    return response;
+  }
+
   if (error !== null || code === null) {
     return go(`/sign-in?error=${oauthErrorKey(error ?? 'OAUTH_FAILED')}`);
   }

@@ -163,6 +163,38 @@ test.describe('session', () => {
   });
 });
 
+test.describe('google role step', () => {
+  test('without the callback cookie there is nothing to finish: back to sign-up', async ({
+    page,
+  }) => {
+    await page.goto('/sign-up/google');
+    await expect(page).toHaveURL(/\/sign-up$/);
+  });
+});
+
+test.describe('password change', () => {
+  test('keeps this device signed in', async ({ page }) => {
+    await page.goto('/sign-up');
+    await page.getByLabel('Your name').fill('E2E Changer');
+    await page.getByLabel('Email').fill(newEmail());
+    await page.getByLabel('Password').fill(PASSWORD);
+    await page.getByRole('checkbox', { name: /Terms of use/ }).click();
+    await page.getByRole('button', { name: 'Create account' }).click();
+    await expect(page).toHaveURL(/\/verify-email\/sent$/);
+
+    await page.goto('/me/account');
+    await page.getByLabel('Current password').fill(PASSWORD);
+    await page.getByLabel('New password').fill('Another-pass-456!');
+    await page.getByRole('button', { name: 'Change password' }).click();
+    await expect(page.getByText('Password changed.')).toBeVisible();
+
+    // The refresh token of this device survived: dropping the access cookie still renews the session.
+    await page.context().clearCookies({ name: SESSION_COOKIE });
+    await page.reload();
+    await expect(page.getByRole('heading', { level: 1, name: 'My account' })).toBeVisible();
+  });
+});
+
 test.describe('password reset', () => {
   test('always answers with the same text, for any address', async ({ page }) => {
     await page.goto('/forgot-password');
