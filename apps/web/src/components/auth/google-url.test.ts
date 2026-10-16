@@ -7,10 +7,8 @@ describe('googleStartPath', () => {
     expect(googleStartPath({ locale: 'ko' })).toBe('/ko/auth/google');
   });
 
-  it('sends role and consent together, only from the sign-up page', () => {
-    expect(googleStartPath({ role: 'CLIENT', locale: 'ru' })).toBe(
-      '/ru/auth/google?role=CLIENT&acceptTerms=true',
-    );
+  it('sends the role as a preselection, never a consent', () => {
+    expect(googleStartPath({ role: 'CLIENT', locale: 'ru' })).toBe('/ru/auth/google?role=CLIENT');
     expect(googleStartPath({ locale: 'en', next: '/talents' })).not.toContain('role');
   });
 

@@ -93,14 +93,15 @@ next, nonce }`, 10 min, `JWT_ACCESS_SECRET`; the access guard rejects it because
   transaction clear its `passwordHash` and revoke all its sessions (pre-hijack: whoever registered the
   address first loses access; the owner sets a password by reset); same email but unverified
   → redirect with `error=EMAIL_NOT_VERIFIED` (prevents takeover); Google does not say `email_verified` →
-  `error=OAUTH_FAILED`, nothing created or parked (no squatting); else create the user with the state's
-  role, `emailVerifiedAt = now()`, `passwordHash = null`, and record the sign-up consents. Then create an `OAUTH_EXCHANGE` token and redirect to
-  `${WEB_URL}/${locale}/auth/callback?code=…&next=…`. Nothing secret is ever in a URL except that
-  single-use 60 s code. Amended by ADR 0024: the start route also sets an `HttpOnly` nonce cookie that the
-  callback must match with the `state` nonce (login CSRF); when the query has no `role`/`acceptTerms`
-  (sign-in page) and nobody exists yet, nothing is created: the callback redirects with a opaque single-use
-  `signup=…` token instead of `code` (the identity is parked in `OAuthSignup`), the web keeps it in an `HttpOnly` cookie, and `/sign-up/google` asks
-  for role and consent before `POST /v1/auth/google/complete` creates the account.
+  `error=OAUTH_FAILED`, nothing created or parked (no squatting). For an existing user, create an
+  `OAUTH_EXCHANGE` token and redirect to `${WEB_URL}/${locale}/auth/callback?code=…&next=…`. Amended by
+  ADR 0024: the start route also sets an `HttpOnly` nonce cookie that the callback must match with the
+  `state` nonce (login CSRF). Amended by ADR 0025: nobody exists yet → nothing is created, whatever the
+  start query says (a link carries no consent): the callback redirects with an opaque single-use
+  `signup=…` token instead of `code` (the identity is parked in `OAuthSignup`) plus `role` when the start
+  query had one; the web keeps the token in an `HttpOnly` cookie, and `/sign-up/google` (role preselected)
+  asks for role and consent before `POST /v1/auth/google/complete` creates the user (`emailVerifiedAt =
+now()`, `passwordHash = null`, sign-up consents).
 - `login` of an unverified user succeeds (they must be able to reach "resend"); gated actions check
   `emailVerifiedAt` themselves (`contact-reveal`, `moderation`). A profile can be created, edited and
   set to `PUBLISHED` without verification, but it is not publicly visible until the owner's email is
@@ -133,17 +134,17 @@ for e2e). Deletion: `RefreshToken`, `VerificationToken`, `AuthIdentity` already 
 
 New namespace `account`; `auth` grows. Server Actions in `src/actions/auth.ts` and `src/actions/account.ts`.
 
-| Route                | Kind                                                         | States                                                                                                                                                                                                                                                                                      |
-| -------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/sign-up`           | Server page + Client form `components/auth/sign-up-form.tsx` | role choice (two radio cards: "I offer my skills" / "I am looking for someone"), consent checkbox with links to `/legal/*`, Google button (if enabled), submitting, `CONFLICT` → `auth.errors.emailTaken`, success → `/verify-email/sent`                                                   |
-| `/sign-in`           | existing form + "Continue with Google" + "Forgot password?"  | `?next=` (validated with `SafePathSchema`) is honoured after success; default `/me/talent-profile` for TALENT, `/talents` for CLIENT                                                                                                                                                        |
-| `/verify-email/sent` | Server page                                                  | explanation, "Resend" button (action → `verify-email/request`; disabled 60 s after click; `RATE_LIMITED` message)                                                                                                                                                                           |
-| `/verify-email`      | Server page reads `?token`, Client confirm component         | confirming, success (link to sign-in or `/me/talent-profile` when a session exists), `NOT_FOUND` → "link expired, request a new one"                                                                                                                                                        |
-| `/forgot-password`   | Server page + Client form                                    | submitting, always the same success text ("If an account exists, we sent a link")                                                                                                                                                                                                           |
-| `/reset-password`    | Server page reads `?token` + Client form                     | new password twice (client-side equality `refine`), success → `/sign-in`, `NOT_FOUND` → expired                                                                                                                                                                                             |
-| `/auth/callback`     | Route Handler `route.ts`                                     | reads `code` (+ `next`), calls `POST /v1/auth/exchange`, sets both cookies, redirects; `?error=` → `/sign-in?error=<CODE>` which shows `auth.errors.<CODE>`                                                                                                                                 |
-| `/me/account`        | Server page, session required; Client forms per section      | sections: profile (display name, language), email (verified badge or "Resend verification"), password (change, or "set a password" via reset email for Google-only users), consents (`legal`), danger zone (`account-deletion`)                                                             |
-| `/me/*` layout       | `app/[locale]/(main)/me/layout.tsx`                          | loads `GET /v1/me`; `pendingConsents` not empty → redirect to `/consent?next=`; unverified → `VerifyEmailBanner` with resend action on every `/me/*` page; on `/me/talent-profile` the banner reads "Verify your email to go live" (`auth.verify.goLive`) when a `PUBLISHED` profile exists |
+| Route                | Kind                                                         | States                                                                                                                                                                                                                                                                                                     |
+| -------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/sign-up`           | Server page + Client form `components/auth/sign-up-form.tsx` | role choice (two radio cards: "I offer my skills" / "I am looking for someone"), consent checkbox with links to `/legal/*`, Google button (if enabled; passes only the role, the consent is given on `/sign-up/google`), submitting, `CONFLICT` → `auth.errors.emailTaken`, success → `/verify-email/sent` |
+| `/sign-in`           | existing form + "Continue with Google" + "Forgot password?"  | `?next=` (validated with `SafePathSchema`) is honoured after success; default `/me/talent-profile` for TALENT, `/talents` for CLIENT                                                                                                                                                                       |
+| `/verify-email/sent` | Server page                                                  | explanation, "Resend" button (action → `verify-email/request`; disabled 60 s after click; `RATE_LIMITED` message)                                                                                                                                                                                          |
+| `/verify-email`      | Server page reads `?token`, Client confirm component         | confirming, success (link to sign-in or `/me/talent-profile` when a session exists), `NOT_FOUND` → "link expired, request a new one"                                                                                                                                                                       |
+| `/forgot-password`   | Server page + Client form                                    | submitting, always the same success text ("If an account exists, we sent a link")                                                                                                                                                                                                                          |
+| `/reset-password`    | Server page reads `?token` + Client form                     | new password twice (client-side equality `refine`), success → `/sign-in`, `NOT_FOUND` → expired                                                                                                                                                                                                            |
+| `/auth/callback`     | Route Handler `route.ts`                                     | reads `code` (+ `next`), calls `POST /v1/auth/exchange`, sets both cookies, redirects; `?error=` → `/sign-in?error=<CODE>` which shows `auth.errors.<CODE>`                                                                                                                                                |
+| `/me/account`        | Server page, session required; Client forms per section      | sections: profile (display name, language), email (verified badge or "Resend verification"), password (change, or "set a password" via reset email for Google-only users), consents (`legal`), danger zone (`account-deletion`)                                                                            |
+| `/me/*` layout       | `app/[locale]/(main)/me/layout.tsx`                          | loads `GET /v1/me`; `pendingConsents` not empty → redirect to `/consent?next=`; unverified → `VerifyEmailBanner` with resend action on every `/me/*` page; on `/me/talent-profile` the banner reads "Verify your email to go live" (`auth.verify.goLive`) when a `PUBLISHED` profile exists                |
 
 - Session (`src/lib/session.ts`): `setSession(session: AuthSession)` sets `skillboard_session` (max-age
   `expiresInSeconds`) and `skillboard_refresh` (max-age until `refreshExpiresAt`); `clearSession` clears
@@ -196,8 +197,9 @@ New namespace `account`; `auth` grows. Server Actions in `src/actions/auth.ts` a
 7. Given a valid reset token and a new password, then login works with the new password, fails with the
    old one, and all refresh tokens of the user are revoked.
 8. Given Google env is set and a state with `role=CLIENT`, when a new Google user completes the callback,
-   then a user with `roles=['CLIENT']`, a linked `AuthIdentity`, `emailVerifiedAt` set and both consents
-   exists, the browser receives only a `code`, and `/auth/callback` ends signed in on `/talents`.
+   then no user exists yet, the browser receives a `signup` token and `role=CLIENT`, and `/sign-up/google`
+   shows CLIENT preselected with the consent box unticked; after ticking it and submitting, a user with
+   `roles=['CLIENT']`, a linked `AuthIdentity`, `emailVerifiedAt` set and both consents exists (ADR 0025).
    (Service unit test with a fake profile; the redirect dance itself is tested manually.)
 9. Given an existing unverified email/password account, when a Google sign-in with the same email happens,
    then no identity is linked and the web shows `auth.errors.EMAIL_NOT_VERIFIED`.

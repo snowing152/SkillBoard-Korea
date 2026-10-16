@@ -1,6 +1,6 @@
 # 0024. Auth hardening: rotation vs revocation, bound Google state, Google role step, password change
 
-Date: 2026-10-16 · Status: Accepted (`/refresh` bullet amended by 0025: a repeat inside the grace window gets the same successor, not a fresh pair) · Amends the rotation bullet of 0020
+Date: 2026-10-16 · Status: Accepted (amended by 0025: a repeat inside the grace window gets the same successor; the role step is taken by every new Google user, the start query carries no consent) · Amends the rotation bullet of 0020
 
 ## Context
 

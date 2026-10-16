@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
-import { AuthSessionSchema, LEGAL_VERSIONS } from '@skillboard/shared';
+import { AuthSessionSchema } from '@skillboard/shared';
 import { argon2id, hash } from 'argon2';
 import {
   TEST_FORMER_DUMMY_PASSWORD,
@@ -377,35 +377,22 @@ describe('AuthService', () => {
       displayName: 'Parent',
     };
 
-    it('creates a CLIENT with a linked identity, verified email and both consents', async () => {
+    it('a role in the start link creates nothing: consent is only given on the role step', async () => {
+      // `/auth/google?role=CLIENT` is a plain link anyone can send; following it must not record a
+      // consent nobody ticked. The role only comes back as a preselection for the role step.
       prisma.authIdentity.findUnique.mockResolvedValue(null);
       prisma.user.findUnique.mockResolvedValue(null);
-      prisma.user.create.mockResolvedValue({ id: USER_ID });
 
       const outcome = await service.completeGoogle(google, state);
 
-      expect(outcome).toEqual({ ok: true, kind: 'code', code: 't'.repeat(43) });
-      const { data } = firstCallArg(prisma.user.create) as {
-        data: {
-          email: string;
-          roles: string[];
-          passwordHash: null;
-          emailVerifiedAt: Date;
-          locale: string;
-          identities: { create: { provider: string; providerUserId: string } };
-        };
-      };
-      expect(data).toMatchObject({
-        email: 'parent@example.com',
-        roles: ['CLIENT'],
-        passwordHash: null,
-        locale: 'ru',
-        identities: { create: { provider: 'GOOGLE', providerUserId: 'g-1' } },
+      expect(outcome).toEqual({ ok: true, kind: 'signup', signupToken: 'opaque-signup-token' });
+      expect(prisma.user.create).not.toHaveBeenCalled();
+      expect(consents.record).not.toHaveBeenCalled();
+      expect(tokens.issueOneTime).not.toHaveBeenCalled();
+      expect(service.googleRedirectParams(outcome, state)).toEqual({
+        signup: 'opaque-signup-token',
+        role: 'CLIENT',
       });
-      expect(data.emailVerifiedAt).toBeInstanceOf(Date);
-      expect(consents.record).toHaveBeenCalledWith(USER_ID, ['TERMS', 'PRIVACY'], 'ru', prisma);
-      expect(tokens.issueOneTime).toHaveBeenCalledWith(USER_ID, 'OAUTH_EXCHANGE');
-      expect(LEGAL_VERSIONS.TERMS).toBeDefined();
     });
 
     it('signs in a known identity without touching users', async () => {
@@ -491,7 +478,6 @@ describe('AuthService', () => {
       const { state, nonce } = await service.signOAuthState({
         role: 'TALENT',
         locale: 'ko',
-        acceptTerms: 'true',
         next: '/talents',
       });
       await expect(service.verifyOAuthState(state, nonce)).resolves.toMatchObject({

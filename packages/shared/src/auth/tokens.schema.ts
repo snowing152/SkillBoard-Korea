@@ -35,31 +35,23 @@ export const ExchangeSchema = z.object({ code: OpaqueTokenSchema });
 export type Exchange = z.infer<typeof ExchangeSchema>;
 
 /**
- * Query of GET /v1/auth/google. `acceptTerms` is the string `'true'` because it travels in a URL.
- * From the sign-up page the person has already chosen a role and ticked the box, so both come along and
- * a new account is created at once. From the sign-in page neither is known: a Google user without an
- * account is then sent to a role-choice step instead of being created silently. Role and consent always
- * travel together.
+ * Query of GET /v1/auth/google. It carries no consent: a link is not a ticked box, and anyone can send
+ * one (ADR 0025). A Google user without an account always goes through the role-choice step, where the
+ * consent is given; `role` (from the sign-up page) only preselects the role there.
  */
-export const GoogleStartQuerySchema = z
-  .object({
-    role: z.enum(SIGNUP_ROLES).optional(),
-    locale: LocaleSchema,
-    acceptTerms: z.literal('true').optional(),
-    next: SafePathSchema.optional(),
-    /**
-     * Random value the web app keeps in its own cookie and expects back in the final redirect, so that a
-     * callback link made in someone else's browser is useless (login CSRF). Opaque to the API.
-     */
-    webNonce: z
-      .string()
-      .regex(/^[A-Za-z0-9_-]{16,64}$/)
-      .optional(),
-  })
-  .refine((q) => (q.role === undefined) === (q.acceptTerms === undefined), {
-    path: ['acceptTerms'],
-    message: 'role and acceptTerms must be sent together',
-  });
+export const GoogleStartQuerySchema = z.object({
+  role: z.enum(SIGNUP_ROLES).optional(),
+  locale: LocaleSchema,
+  next: SafePathSchema.optional(),
+  /**
+   * Random value the web app keeps in its own cookie and expects back in the final redirect, so that a
+   * callback link made in someone else's browser is useless (login CSRF). Opaque to the API.
+   */
+  webNonce: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{16,64}$/)
+    .optional(),
+});
 export type GoogleStartQuery = z.infer<typeof GoogleStartQuerySchema>;
 
 /**

@@ -1252,7 +1252,6 @@ export interface operations {
       query: {
         role?: 'TALENT' | 'CLIENT';
         locale: 'en' | 'ko' | 'ru';
-        acceptTerms?: 'true';
         next?: string;
         webNonce?: string;
       };

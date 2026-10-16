@@ -1,3 +1,4 @@
+import { SIGNUP_ROLES } from '@skillboard/shared';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { getLocale, getTranslations } from 'next-intl/server';
@@ -19,19 +20,23 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function GoogleSignUpPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string | string[] }>;
+  searchParams: Promise<{ next?: string | string[]; role?: string | string[] }>;
 }) {
   const t = await getTranslations('auth.googleSignUp');
   const store = await cookies();
   if (!store.has(GOOGLE_SIGNUP_COOKIE)) {
     redirect({ href: '/sign-up', locale: await getLocale() });
   }
-  const { next } = await searchParams;
+  const { next, role } = await searchParams;
   return (
     <PageContainer width="form">
       <PageHeader title={t('title')} description={t('intro')} />
       <div className="rounded-card bg-card p-4 sm:p-6">
-        <GoogleSignUpForm next={safeNextPath(next, '') || undefined} />
+        <GoogleSignUpForm
+          next={safeNextPath(next, '') || undefined}
+          // The role picked on /sign-up, preselected; the box below is still unticked.
+          initialRole={SIGNUP_ROLES.find((r) => r === role) ?? 'TALENT'}
+        />
       </div>
     </PageContainer>
   );

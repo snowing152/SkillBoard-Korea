@@ -207,7 +207,7 @@ test.describe('google callback binding (login CSRF)', () => {
   });
 
   test('the start route does nothing while Google is switched off', async ({ page }) => {
-    await page.goto('/auth/google?role=CLIENT&acceptTerms=true');
+    await page.goto('/auth/google?role=CLIENT');
     await expect(page).toHaveURL(/\/sign-in\?error=OAUTH_FAILED$/);
   });
 });

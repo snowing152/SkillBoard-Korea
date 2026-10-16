@@ -249,7 +249,8 @@ export class AuthService {
   /**
    * The three outcomes of ADR 0009: a known Google identity signs in; a verified account with the same
    * email gets the identity linked (and loses its password and sessions); an unverified one is refused
-   * (takeover prevention); otherwise a new account is created, only for an address Google verified. A single-use 60 s code is returned, never a token (the code travels in a URL).
+   * (takeover prevention); otherwise, for an address Google verified, the identity is parked for the
+   * role step, which creates the account. A single-use 60 s code is returned, never a token (the code travels in a URL).
    */
   async completeGoogle(profile: GoogleProfile, state: OAuthState): Promise<GoogleOutcome> {
     const email = profile.email?.trim().toLowerCase();
@@ -261,7 +262,7 @@ export class AuthService {
     });
 
     let userId: string;
-    let outcome: 'existing' | 'linked' | 'created';
+    let outcome: 'existing' | 'linked';
     if (identity) {
       userId = identity.userId;
       outcome = 'existing';
@@ -300,20 +301,9 @@ export class AuthService {
         // no parked identity.
         this.logger.warn('google outcome=google_email_unverified');
         return { ok: false, error: 'OAUTH_FAILED' };
-      } else if (state.role) {
-        // Role and consent were given on the sign-up page: create the account right away.
-        try {
-          userId = await this.createGoogleUser(profile, email, state.role, state.locale);
-        } catch (err: unknown) {
-          // A concurrent sign-up with the same email won the unique index; ask the user to retry.
-          if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-            return { ok: false, error: 'OAUTH_FAILED' };
-          }
-          throw err;
-        }
-        outcome = 'created';
       } else {
-        // Started on /sign-in: nobody chose a role or accepted the terms, so nothing is created yet.
+        // Nobody has an account yet. The consent is given only by the POST of the role step, never by
+        // the start link, which anyone can send (ADR 0025); `state.role` merely preselects a role there.
         this.logger.log('google outcome=needs_role');
         return {
           ok: true,
@@ -382,7 +372,7 @@ export class AuthService {
     if (!outcome.ok) return { error: outcome.error, ...extra };
     return outcome.kind === 'code'
       ? { code: outcome.code, ...extra }
-      : { signup: outcome.signupToken, ...extra };
+      : { signup: outcome.signupToken, ...(state.role ? { role: state.role } : {}), ...extra };
   }
 
   /**

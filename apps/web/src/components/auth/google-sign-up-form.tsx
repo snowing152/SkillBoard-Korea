@@ -18,13 +18,19 @@ import { defaultLandingPath } from '@/lib/auth-forms';
  * The step between Google and a new account: choose a role and accept the terms. Nothing exists until
  * the button is pressed; the token that names the Google identity sits in an httpOnly cookie.
  */
-export function GoogleSignUpForm({ next }: { next?: string | undefined }) {
+export function GoogleSignUpForm({
+  next,
+  initialRole,
+}: {
+  next?: string | undefined;
+  initialRole: SignupRole;
+}) {
   const t = useTranslations('auth.googleSignUp');
   const tSignUp = useTranslations('auth.signUp');
   const tCommon = useTranslations('common');
   const locale = useLocale();
   const router = useRouter();
-  const [role, setRole] = useState<SignupRole>('TALENT');
+  const [role, setRole] = useState<SignupRole>(initialRole);
   const [accepted, setAccepted] = useState(false);
   const [showAcceptError, setShowAcceptError] = useState(false);
   const [failure, setFailure] = useState<ActionFailure | null>(null);

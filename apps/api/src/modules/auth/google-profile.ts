@@ -17,7 +17,7 @@ export type GoogleProfile = {
  */
 export const OAuthStateSchema = z.object({
   purpose: z.literal('oauth_state'),
-  /** Absent when the flow started on /sign-in: an unknown Google user then picks a role first. */
+  /** Only a preselection for the role step (ADR 0025); never creates an account or a consent. */
   role: z.enum(SIGNUP_ROLES).optional(),
   locale: LocaleSchema,
   next: SafePathSchema.optional(),

@@ -97,9 +97,7 @@ describe('auth and accounts (e2e)', () => {
     expect(outbox).toHaveLength(0);
 
     if (!process.env.GOOGLE_CLIENT_ID) {
-      const res = await request(server)
-        .get('/v1/auth/google?role=CLIENT&locale=en&acceptTerms=true')
-        .expect(404);
+      const res = await request(server).get('/v1/auth/google?role=CLIENT&locale=en').expect(404);
       expect(ErrorResponseSchema.parse(res.body).error.code).toBe('NOT_FOUND');
     }
   });
@@ -359,14 +357,35 @@ describe('auth and accounts (e2e)', () => {
     expect(ErrorResponseSchema.parse(limited.body).error.code).toBe('RATE_LIMITED');
   });
 
-  it('creates a Google CLIENT through the exchange code, verified and with both consents', async () => {
+  it('signs a known Google CLIENT in through the exchange code', async () => {
     const auth = app.get(AuthService);
-    const outcome = await auth.completeGoogle(
-      { id: 'e2e-google-sub-1', email: EMAILS.google, emailVerified: true, displayName: 'Parent' },
-      { purpose: 'oauth_state', role: 'CLIENT', locale: 'en', nonce: 'e2e' },
-    );
-    if (!outcome.ok || outcome.kind !== 'code') throw new Error('expected an exchange code');
+    const google = {
+      id: 'e2e-google-sub-1',
+      email: EMAILS.google,
+      emailVerified: true,
+      displayName: 'Parent',
+    };
+    // A role in the start link creates nothing (ADR 0025): the account comes from the role step.
+    const parked = await auth.completeGoogle(google, {
+      purpose: 'oauth_state',
+      role: 'CLIENT',
+      locale: 'en',
+      nonce: 'e2e',
+    });
+    if (!parked.ok || parked.kind !== 'signup') throw new Error('expected the role step');
+    expect(await prisma.user.count({ where: { email: EMAILS.google } })).toBe(0);
+    await request(server)
+      .post('/v1/auth/google/complete')
+      .send({ signupToken: parked.signupToken, role: 'CLIENT', locale: 'en', acceptTerms: true })
+      .expect(200);
 
+    // From now on the same Google user is simply signed in: no role step.
+    const outcome = await auth.completeGoogle(google, {
+      purpose: 'oauth_state',
+      locale: 'en',
+      nonce: 'e2e',
+    });
+    if (!outcome.ok || outcome.kind !== 'code') throw new Error('expected an exchange code');
     const res = await request(server)
       .post('/v1/auth/exchange')
       .send({ code: outcome.code })
@@ -379,13 +398,6 @@ describe('auth and accounts (e2e)', () => {
       pendingConsents: [],
     });
     expect(await prisma.authIdentity.count({ where: { userId: session.user.id } })).toBe(1);
-
-    // The same Google user, starting from /sign-in, is simply signed in: no role step.
-    const again = await auth.completeGoogle(
-      { id: 'e2e-google-sub-1', email: EMAILS.google, emailVerified: true, displayName: 'Parent' },
-      { purpose: 'oauth_state', locale: 'en', nonce: 'e2e' },
-    );
-    expect(again).toMatchObject({ ok: true, kind: 'code' });
 
     // A code issued before a revocation (password reset or change, logout everywhere) is void.
     const stale = await auth.completeGoogle(

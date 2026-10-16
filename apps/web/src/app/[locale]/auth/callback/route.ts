@@ -1,4 +1,4 @@
-import { AuthSessionSchema } from '@skillboard/shared';
+import { AuthSessionSchema, SIGNUP_ROLES } from '@skillboard/shared';
 import { type NextRequest, NextResponse } from 'next/server';
 import { env } from '@/env';
 import { getPathname } from '@/i18n/navigation';
@@ -48,11 +48,14 @@ export async function GET(request: NextRequest, { params }: Params) {
   // A Google user without an account: the API created nothing and handed over a signed token. It goes
   // into an httpOnly cookie (never into browser JavaScript or the page URL) for the role-choice step.
   if (error === null && code === null && signup !== null && /^[A-Za-z0-9_-]{43}$/.test(signup)) {
-    const next = search.get('next');
-    const safe = safeNextPath(next ?? undefined, '');
-    const response = go(
-      safe ? `/sign-up/google?next=${encodeURIComponent(safe)}` : '/sign-up/google',
-    );
+    const query = new URLSearchParams();
+    const safe = safeNextPath(search.get('next') ?? undefined, '');
+    if (safe) query.set('next', safe);
+    // Only a preselection on the role step; the consent is given there.
+    const role = SIGNUP_ROLES.find((r) => r === search.get('role'));
+    if (role) query.set('role', role);
+    const rest = query.toString();
+    const response = go(`/sign-up/google${rest ? `?${rest}` : ''}`);
     response.cookies.delete(GOOGLE_NONCE_COOKIE);
     response.cookies.set(
       GOOGLE_SIGNUP_COOKIE,

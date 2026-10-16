@@ -86,10 +86,9 @@ describe('token schemas', () => {
     expect(LogoutSchema.parse({}).all).toBe(false);
   });
 
-  it('Google start takes acceptTerms only as the string "true" and a safe next', () => {
-    const base = { role: 'CLIENT', locale: 'ru', acceptTerms: 'true' };
+  it('Google start takes a signup role and a safe next', () => {
+    const base = { role: 'CLIENT', locale: 'ru' };
     expect(GoogleStartQuerySchema.safeParse(base).success).toBe(true);
-    expect(GoogleStartQuerySchema.safeParse({ ...base, acceptTerms: 'false' }).success).toBe(false);
     expect(GoogleStartQuerySchema.safeParse({ ...base, role: 'ADMIN' }).success).toBe(false);
     expect(GoogleStartQuerySchema.safeParse({ ...base, next: '//evil.example' }).success).toBe(
       false,
@@ -104,14 +103,12 @@ describe('OAUTH_CALLBACK_ERRORS', () => {
 });
 
 describe('Google role-choice step', () => {
-  it('start query: role and acceptTerms come together or not at all', () => {
+  it('start query carries no consent: acceptTerms is dropped, a role alone is fine', () => {
     const base = { locale: 'en' };
     expect(GoogleStartQuerySchema.safeParse(base).success).toBe(true);
-    expect(
-      GoogleStartQuerySchema.safeParse({ ...base, role: 'TALENT', acceptTerms: 'true' }).success,
-    ).toBe(true);
-    expect(GoogleStartQuerySchema.safeParse({ ...base, role: 'TALENT' }).success).toBe(false);
-    expect(GoogleStartQuerySchema.safeParse({ ...base, acceptTerms: 'true' }).success).toBe(false);
+    expect(GoogleStartQuerySchema.safeParse({ ...base, role: 'TALENT' }).success).toBe(true);
+    const parsed = GoogleStartQuerySchema.parse({ ...base, role: 'TALENT', acceptTerms: 'true' });
+    expect(parsed).not.toHaveProperty('acceptTerms');
   });
 
   it('complete: needs a token, a signup role and the consent flag', () => {

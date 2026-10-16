@@ -1,6 +1,6 @@
-# 0025. Auth security review: one successor per refresh token, Google linking ends the old password
+# 0025. Auth security review: one refresh successor, Google linking ends the old password, links carry no consent
 
-Date: 2026-10-16 · Status: Accepted · Amends the `/refresh` bullet of 0024 and the linking rule of 0009
+Date: 2026-10-16 · Status: Accepted · Amends the `/refresh` and role-step bullets of 0024 and the linking rule of 0009
 
 ## Context
 
@@ -23,6 +23,12 @@ the address first (pre-hijack) kept access after the real owner verified it and 
   all its refresh tokens in the same transaction as the link; the owner sets a password through the reset
   mail. A Google profile without `email_verified` never creates an account or a parked sign-up
   (`error=OAUTH_FAILED`).
+- **A link carries no consent.** The Google callback never creates an account: every unknown Google user
+  is parked and goes through the role step, whose POST (Server Action, origin-checked) records the
+  consent. `acceptTerms` is gone from `GoogleStartQuerySchema`; `role` stays, only to preselect the role
+  there. Amends the role-step bullet of 0024, which created the account at once when the start query had
+  `role` and `acceptTerms`: `/auth/google?role=CLIENT&acceptTerms=true` was a link anyone could send, and
+  following it recorded a TERMS and PRIVACY consent nobody had ticked (PIPA).
 
 ## Consequences
 
@@ -31,3 +37,4 @@ the window revokes everything. Tokens rotated before this change have a random s
 one inside its grace window gets a 401 once; harmless before launch. The grace window may now be raised
 without creating untracked chains. A person who links Google to a password account loses the password and
 is signed out elsewhere, once; the account settings page already offers "set a password" by mail.
+Google sign-up from `/sign-up` takes one more screen (tick the box, press "Create account").

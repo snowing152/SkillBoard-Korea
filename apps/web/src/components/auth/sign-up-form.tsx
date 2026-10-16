@@ -40,7 +40,6 @@ export function SignUpForm({ googleEnabled }: Props) {
     register,
     handleSubmit,
     control,
-    trigger,
     setValue,
     formState: { errors },
   } = useForm<SignUpValues, unknown, Register>({
@@ -66,9 +65,8 @@ export function SignUpForm({ googleEnabled }: Props) {
     });
   });
 
-  const onGoogle = async () => {
-    // The box must be ticked before anything leaves the page: it is the consent for a new account.
-    if (!(await trigger('acceptTerms'))) return;
+  const onGoogle = () => {
+    // No consent travels with the link: a new Google user ticks the box on the role step (ADR 0025).
     if (googleEnabled) window.location.assign(googleStartPath({ role, locale }));
   };
 
