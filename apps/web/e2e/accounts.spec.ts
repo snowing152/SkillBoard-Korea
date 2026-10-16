@@ -156,6 +156,8 @@ test.describe('session', () => {
 
     await page.goto('/me/account');
     await expect(page.getByRole('heading', { level: 1, name: 'My account' })).toBeVisible();
+    // Wait for hydration: a select changed before React attaches is reset to its default afterwards.
+    await page.waitForLoadState('networkidle');
     await page.getByLabel('Language', { exact: true }).selectOption('ko');
     await page.getByRole('button', { name: 'Save' }).click();
     // The first request to /ko compiles the route in `next dev`; allow for it.

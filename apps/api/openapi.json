@@ -936,8 +936,7 @@
         "properties": {
           "signupToken": {
             "type": "string",
-            "minLength": 20,
-            "maxLength": 4000
+            "pattern": "^[A-Za-z0-9_-]{43}$"
           },
           "role": {
             "type": "string",
