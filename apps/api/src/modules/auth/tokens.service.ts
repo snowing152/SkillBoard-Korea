@@ -275,6 +275,18 @@ export class TokensService {
     return token;
   }
 
+  /** Marks the user's unused tokens of one purpose as used (a password change voids reset links). */
+  async voidOneTime(
+    userId: string,
+    purpose: TokenPurpose,
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    await tx.verificationToken.updateMany({
+      where: { userId, purpose, usedAt: null },
+      data: { usedAt: this.now() },
+    });
+  }
+
   /**
    * Spends a one-time token and runs its effect in the same transaction, so the token is used if and
    * only if the effect happened (retries are safe). Unknown, used and expired tokens are one

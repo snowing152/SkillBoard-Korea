@@ -53,6 +53,7 @@ describe('AuthService', () => {
     issueOAuthSignup: jest.fn(),
     consumeOAuthSignup: jest.fn(),
     consumeOneTime: jest.fn(),
+    voidOneTime: jest.fn(),
   };
   const mail = { send: jest.fn() };
   let service: AuthService;
@@ -360,6 +361,8 @@ describe('AuthService', () => {
       expect(prisma.user.update).toHaveBeenCalledTimes(1);
       // Every other session is signed out; the caller's own refresh token is the one kept.
       expect(tokens.revokeAllExcept).toHaveBeenCalledWith(USER_ID, 'k'.repeat(43), prisma);
+      // Reset links sent before the change are void, in the same transaction.
+      expect(tokens.voidOneTime).toHaveBeenCalledWith(USER_ID, 'PASSWORD_RESET', prisma);
     });
   });
 

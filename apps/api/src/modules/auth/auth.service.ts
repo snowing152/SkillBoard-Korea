@@ -458,6 +458,8 @@ export class AuthService {
       await tx.user.update({ where: { id: userId }, data: { passwordHash } });
       // Other devices may be in a thief's hands: sign them out, keep the one that just proved the old password.
       await this.tokens.revokeAllExcept(userId, input.refreshToken, tx);
+      // So may the mailbox: a reset link sent earlier must not undo the password chosen now.
+      await this.tokens.voidOneTime(userId, 'PASSWORD_RESET', tx);
     });
     this.logger.log(`change-password userId=${userId} outcome=changed`);
   }

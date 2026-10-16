@@ -10,7 +10,12 @@ import {
   SkillCatalogSchema,
   TalentCardListSchema,
 } from '@skillboard/shared';
-import { TEST_NEW_PASSWORD, TEST_PASSWORD, TEST_WRONG_PASSWORD } from './fixtures/credentials.js';
+import {
+  TEST_NEW_PASSWORD,
+  TEST_PASSWORD,
+  TEST_STRANGER_PASSWORD,
+  TEST_WRONG_PASSWORD,
+} from './fixtures/credentials.js';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
@@ -252,7 +257,7 @@ describe('auth and accounts (e2e)', () => {
   it('logs out with the refresh token alone, when the access token is gone', async () => {
     // The web signs out after its access cookie expired or the API was down during renewal: the
     // refresh token is the credential for its own session, so it must still be revoked.
-    const session = AuthSessionSchema.parse((await login(PASSWORD).expect(200)).body);
+    const session = await app.get(AuthService).login({ email: EMAILS.main, password: PASSWORD });
     await request(server)
       .post('/v1/auth/logout')
       .send({ refreshToken: session.refreshToken })
@@ -464,6 +469,30 @@ describe('auth and accounts (e2e)', () => {
       .post('/v1/auth/google/complete')
       .send({ ...body, signupToken: 'x'.repeat(43), acceptTerms: true })
       .expect(404);
+  });
+
+  it('a password change voids reset links sent before it', async () => {
+    // A reset link in a mailbox someone else reads must not undo the password the owner just chose.
+    // Signed in through the service: the HTTP login budget (10/min) belongs to the other tests.
+    const session = await app
+      .get(AuthService)
+      .login({ email: EMAILS.main, password: NEW_PASSWORD });
+    const token = await app.get(TokensService).issueOneTime(session.user.id, 'PASSWORD_RESET');
+    await request(server)
+      .post('/v1/me/password')
+      .set(bearer(session.accessToken))
+      .send({ currentPassword: NEW_PASSWORD, newPassword: PASSWORD })
+      .expect(204);
+    await request(server)
+      .post('/v1/auth/password-reset/confirm')
+      .send({ token, password: TEST_STRANGER_PASSWORD })
+      .expect(404);
+    // Put it back for the next test.
+    await request(server)
+      .post('/v1/me/password')
+      .set(bearer(session.accessToken))
+      .send({ currentPassword: PASSWORD, newPassword: NEW_PASSWORD })
+      .expect(204);
   });
 
   it('a password change signs out every other device and keeps the current one', async () => {
