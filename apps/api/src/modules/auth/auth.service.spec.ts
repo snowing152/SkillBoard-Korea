@@ -415,6 +415,41 @@ describe('AuthService', () => {
       });
     });
 
+    it('linking ends every session and the password of the account (pre-hijack)', async () => {
+      // Someone may have registered the address first and kept a password and a session: once the
+      // real owner proves the address through Google, both must stop working.
+      prisma.authIdentity.findUnique.mockResolvedValue(null);
+      prisma.user.findUnique.mockResolvedValue({ id: USER_ID, emailVerifiedAt: new Date() });
+      await service.completeGoogle(google, state);
+      expect(tokens.revokeAll).toHaveBeenCalledWith(USER_ID, prisma);
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: USER_ID },
+        data: { passwordHash: null },
+      });
+      // The exchange code comes after the revocation, or the revocation would void it.
+      expect(tokens.revokeAll.mock.invocationCallOrder[0]).toBeLessThan(
+        tokens.issueOneTime.mock.invocationCallOrder[0] ?? 0,
+      );
+    });
+
+    it('creates and parks nothing for an address Google has not verified', async () => {
+      prisma.authIdentity.findUnique.mockResolvedValue(null);
+      prisma.user.findUnique.mockResolvedValue(null);
+      const unverified = { ...google, emailVerified: false };
+      await expect(service.completeGoogle(unverified, state)).resolves.toEqual({
+        ok: false,
+        error: 'OAUTH_FAILED',
+      });
+      const { role: _role, ...signInState } = state;
+      await expect(service.completeGoogle(unverified, signInState)).resolves.toEqual({
+        ok: false,
+        error: 'OAUTH_FAILED',
+      });
+      expect(prisma.user.create).not.toHaveBeenCalled();
+      expect(tokens.issueOAuthSignup).not.toHaveBeenCalled();
+      expect(tokens.issueOneTime).not.toHaveBeenCalled();
+    });
+
     it('refuses to link an unverified account (account takeover)', async () => {
       prisma.authIdentity.findUnique.mockResolvedValue(null);
       prisma.user.findUnique.mockResolvedValue({ id: USER_ID, emailVerifiedAt: null });

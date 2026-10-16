@@ -89,10 +89,12 @@ passes 300 lines):
   validates the query, signs it into a `state` JWT (payload `{ purpose: 'oauth_state', role, locale,
 next, nonce }`, 10 min, `JWT_ACCESS_SECRET`; the access guard rejects it because `sub` is missing) and
   redirects. The callback verifies `state`, then: existing `AuthIdentity` → that user; else a user with the
-  same lower-cased email and `emailVerifiedAt` set → link identity (ADR 0009); same email but unverified
-  → redirect with `error=EMAIL_NOT_VERIFIED` (prevents takeover); else create the user with the state's
-  role, `emailVerifiedAt = now()` when Google says `email_verified`, `passwordHash = null`, and record the
-  sign-up consents. Then create an `OAUTH_EXCHANGE` token and redirect to
+  same lower-cased email and `emailVerifiedAt` set → link identity (ADR 0009), and in the same
+  transaction clear its `passwordHash` and revoke all its sessions (pre-hijack: whoever registered the
+  address first loses access; the owner sets a password by reset); same email but unverified
+  → redirect with `error=EMAIL_NOT_VERIFIED` (prevents takeover); Google does not say `email_verified` →
+  `error=OAUTH_FAILED`, nothing created or parked (no squatting); else create the user with the state's
+  role, `emailVerifiedAt = now()`, `passwordHash = null`, and record the sign-up consents. Then create an `OAUTH_EXCHANGE` token and redirect to
   `${WEB_URL}/${locale}/auth/callback?code=…&next=…`. Nothing secret is ever in a URL except that
   single-use 60 s code. Amended by ADR 0024: the start route also sets an `HttpOnly` nonce cookie that the
   callback must match with the `state` nonce (login CSRF); when the query has no `role`/`acceptTerms`

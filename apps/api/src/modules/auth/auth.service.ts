@@ -243,8 +243,8 @@ export class AuthService {
 
   /**
    * The three outcomes of ADR 0009: a known Google identity signs in; a verified account with the same
-   * email gets the identity linked; an unverified one is refused (takeover prevention); otherwise a
-   * new account is created. A single-use 60 s code is returned, never a token (the code travels in a URL).
+   * email gets the identity linked (and loses its password and sessions); an unverified one is refused
+   * (takeover prevention); otherwise a new account is created, only for an address Google verified. A single-use 60 s code is returned, never a token (the code travels in a URL).
    */
   async completeGoogle(profile: GoogleProfile, state: OAuthState): Promise<GoogleOutcome> {
     const email = profile.email?.trim().toLowerCase();
@@ -272,8 +272,15 @@ export class AuthService {
           return { ok: false, error: 'EMAIL_NOT_VERIFIED' };
         }
         try {
-          await this.prisma.authIdentity.create({
-            data: { provider: 'GOOGLE', providerUserId: profile.id, userId: sameEmail.id },
+          // Pre-hijack: whoever registered the address first may still hold its password and a session.
+          // The owner just proved the address through Google, so both end with the link (reset sets a
+          // new password). One transaction: a link with the old password still alive must not exist.
+          await this.prisma.$transaction(async (tx) => {
+            await tx.authIdentity.create({
+              data: { provider: 'GOOGLE', providerUserId: profile.id, userId: sameEmail.id },
+            });
+            await tx.user.update({ where: { id: sameEmail.id }, data: { passwordHash: null } });
+            await this.tokens.revokeAll(sameEmail.id, tx);
           });
         } catch (err: unknown) {
           // Two concurrent callbacks linked the same identity; the first one won, which is fine.
@@ -283,6 +290,11 @@ export class AuthService {
         }
         userId = sameEmail.id;
         outcome = 'linked';
+      } else if (!profile.emailVerified) {
+        // An address Google does not vouch for would squat the email for its real owner: no account,
+        // no parked identity.
+        this.logger.warn('google outcome=google_email_unverified');
+        return { ok: false, error: 'OAUTH_FAILED' };
       } else if (state.role) {
         // Role and consent were given on the sign-up page: create the account right away.
         try {
