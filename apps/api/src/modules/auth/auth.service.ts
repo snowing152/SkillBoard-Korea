@@ -8,6 +8,7 @@ import {
   type ChangePassword,
   DEFAULT_LOCALE,
   type GoogleComplete,
+  type GoogleLink,
   type GoogleStartQuery,
   type Locale,
   type Login,
@@ -62,6 +63,7 @@ const DISPLAY_NAME_MAX = 50;
 export type GoogleOutcome =
   | { ok: true; kind: 'code'; code: string }
   | { ok: true; kind: 'signup'; signupToken: string }
+  | { ok: true; kind: 'link'; linkToken: string }
   | { ok: false; error: OAuthCallbackError };
 
 /**
@@ -247,10 +249,10 @@ export class AuthService {
   }
 
   /**
-   * The three outcomes of ADR 0009: a known Google identity signs in; a verified account with the same
-   * email gets the identity linked (and loses its password and sessions); an unverified one is refused
-   * (takeover prevention); otherwise, for an address Google verified, the identity is parked for the
-   * role step, which creates the account. A single-use 60 s code is returned, never a token (the code travels in a URL).
+   * The outcomes of ADR 0009, amended by 0025: a known Google identity signs in with a single-use 60 s
+   * code (never a token: the code travels in a URL); a verified account with the same email gets a link
+   * token for the confirmation step; an unverified one is refused (takeover prevention); otherwise, for an
+   * address Google verified, the identity is parked for the role step, which creates the account.
    */
   async completeGoogle(profile: GoogleProfile, state: OAuthState): Promise<GoogleOutcome> {
     const email = profile.email?.trim().toLowerCase();
@@ -261,71 +263,60 @@ export class AuthService {
       select: { userId: true },
     });
 
-    let userId: string;
-    let outcome: 'existing' | 'linked';
-    if (identity) {
-      userId = identity.userId;
-      outcome = 'existing';
-    } else {
-      const sameEmail = await this.prisma.user.findUnique({
-        where: { email },
-        select: { id: true, emailVerifiedAt: true },
-      });
-      if (sameEmail) {
-        // Both sides must vouch for the address: our account verified it, and Google says it did too.
-        if (!sameEmail.emailVerifiedAt || !profile.emailVerified) {
-          this.logger.warn(`google userId=${sameEmail.id} outcome=email_not_verified`);
-          return { ok: false, error: 'EMAIL_NOT_VERIFIED' };
-        }
-        try {
-          // Pre-hijack: whoever registered the address first may still hold its password and a session.
-          // The owner just proved the address through Google, so both end with the link (reset sets a
-          // new password). One transaction: a link with the old password still alive must not exist.
-          await this.prisma.$transaction(async (tx) => {
-            await tx.authIdentity.create({
-              data: { provider: 'GOOGLE', providerUserId: profile.id, userId: sameEmail.id },
-            });
-            await tx.user.update({ where: { id: sameEmail.id }, data: { passwordHash: null } });
-            await this.tokens.revokeAll(sameEmail.id, tx);
-          });
-        } catch (err: unknown) {
-          // Two concurrent callbacks linked the same identity; the first one won, which is fine.
-          if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')) {
-            throw err;
-          }
-        }
-        userId = sameEmail.id;
-        outcome = 'linked';
-      } else if (!profile.emailVerified) {
-        // An address Google does not vouch for would squat the email for its real owner: no account,
-        // no parked identity.
-        this.logger.warn('google outcome=google_email_unverified');
-        return { ok: false, error: 'OAUTH_FAILED' };
-      } else {
-        // Nobody has an account yet. The consent is given only by the POST of the role step, never by
-        // the start link, which anyone can send (ADR 0025); `state.role` merely preselects a role there.
-        this.logger.log('google outcome=needs_role');
-        return {
-          ok: true,
-          kind: 'signup',
-          // Opaque: the identity stays in the database, only this random token goes into the redirect URL.
-          signupToken: await this.tokens.issueOAuthSignup({
-            providerUserId: profile.id,
-            email,
-            emailVerified: profile.emailVerified,
-            displayName: profile.displayName,
-            locale: state.locale,
-          }),
-        };
-      }
-    }
-
-    this.logger.log(`google userId=${userId} outcome=${outcome}`);
+    if (!identity) return this.parkGoogleIdentity(profile, email, state);
+    this.logger.log(`google userId=${identity.userId} outcome=existing`);
     return {
       ok: true,
       kind: 'code',
-      code: await this.tokens.issueOneTime(userId, 'OAUTH_EXCHANGE'),
+      code: await this.tokens.issueOneTime(identity.userId, 'OAUTH_EXCHANGE'),
     };
+  }
+
+  /**
+   * A Google identity we do not know yet. This runs inside a GET flow that a link on any site can start,
+   * so it never changes an account: it parks the identity for a step the owner submits by POST, the
+   * role step (new account) or the link confirmation (existing account, ADR 0025).
+   */
+  private async parkGoogleIdentity(
+    profile: GoogleProfile,
+    email: string,
+    state: OAuthState,
+  ): Promise<GoogleOutcome> {
+    const sameEmail = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, emailVerifiedAt: true },
+    });
+    if (sameEmail && (!sameEmail.emailVerifiedAt || !profile.emailVerified)) {
+      // Both sides must vouch for the address: our account verified it, and Google says it did too.
+      this.logger.warn(`google userId=${sameEmail.id} outcome=email_not_verified`);
+      return { ok: false, error: 'EMAIL_NOT_VERIFIED' };
+    }
+    if (!profile.emailVerified) {
+      // An address Google does not vouch for would squat the email for its real owner: no account,
+      // no parked identity.
+      this.logger.warn('google outcome=google_email_unverified');
+      return { ok: false, error: 'OAUTH_FAILED' };
+    }
+    // Opaque: the identity stays in the database, only this random token goes into the redirect URL.
+    const parked = {
+      providerUserId: profile.id,
+      email,
+      emailVerified: profile.emailVerified,
+      displayName: profile.displayName,
+      locale: state.locale,
+    };
+    if (sameEmail) {
+      this.logger.log(`google userId=${sameEmail.id} outcome=needs_link_confirmation`);
+      return {
+        ok: true,
+        kind: 'link',
+        linkToken: await this.tokens.issueOAuthSignup(parked, 'LINK'),
+      };
+    }
+    // The consent is given only by the POST of the role step, never by the start link, which anyone can
+    // send (ADR 0025); `state.role` merely preselects a role there.
+    this.logger.log('google outcome=needs_role');
+    return { ok: true, kind: 'signup', signupToken: await this.tokens.issueOAuthSignup(parked) };
   }
 
   private async createGoogleUser(
@@ -370,9 +361,18 @@ export class AuthService {
       ...(state.webNonce ? { n: state.webNonce } : {}),
     };
     if (!outcome.ok) return { error: outcome.error, ...extra };
-    return outcome.kind === 'code'
-      ? { code: outcome.code, ...extra }
-      : { signup: outcome.signupToken, ...(state.role ? { role: state.role } : {}), ...extra };
+    switch (outcome.kind) {
+      case 'code':
+        return { code: outcome.code, ...extra };
+      case 'link':
+        return { link: outcome.linkToken, ...extra };
+      case 'signup':
+        return {
+          signup: outcome.signupToken,
+          ...(state.role ? { role: state.role } : {}),
+          ...extra,
+        };
+    }
   }
 
   /**
@@ -384,7 +384,7 @@ export class AuthService {
     let userId: string;
     try {
       // The parked identity is deleted in the same transaction that creates the account.
-      userId = await this.tokens.consumeOAuthSignup(input.signupToken, (identity, tx) =>
+      userId = await this.tokens.consumeOAuthSignup(input.signupToken, 'SIGNUP', (identity, tx) =>
         this.createGoogleUser(
           {
             id: identity.providerUserId,
@@ -405,6 +405,45 @@ export class AuthService {
       throw err;
     }
     this.logger.log(`google userId=${userId} outcome=created_after_role`);
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: userSelect });
+    if (!user) throw new ApiError('NOT_FOUND', 'Token not found or expired');
+    return this.session(toAccount(user), userAgent);
+  }
+
+  /**
+   * The owner confirmed linking Google to the existing account with the same email. Pre-hijack: whoever
+   * registered the address first may still hold its password and a session; the owner just proved the
+   * address through Google, so both end with the link (a reset sets a new password). One transaction: a
+   * link with the old password still alive must not exist. Then this device is signed in.
+   */
+  async confirmGoogleLink(input: GoogleLink, userAgent?: string): Promise<AuthSession> {
+    let userId: string;
+    try {
+      userId = await this.tokens.consumeOAuthSignup(
+        input.linkToken,
+        'LINK',
+        async (identity, tx) => {
+          const user = await tx.user.findUnique({
+            where: { email: identity.email },
+            select: { id: true, emailVerifiedAt: true },
+          });
+          // Deleted or replaced in the ten minutes since the callback: nothing to link any more.
+          if (!user?.emailVerifiedAt) throw new ApiError('NOT_FOUND', 'Token not found or expired');
+          await tx.authIdentity.create({
+            data: { provider: 'GOOGLE', providerUserId: identity.providerUserId, userId: user.id },
+          });
+          await tx.user.update({ where: { id: user.id }, data: { passwordHash: null } });
+          await this.tokens.revokeAll(user.id, tx);
+          return user.id;
+        },
+      );
+    } catch (err: unknown) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ApiError('CONFLICT', 'This Google account is already linked');
+      }
+      throw err;
+    }
+    this.logger.log(`google userId=${userId} outcome=linked`);
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: userSelect });
     if (!user) throw new ApiError('NOT_FOUND', 'Token not found or expired');
     return this.session(toAccount(user), userAgent);

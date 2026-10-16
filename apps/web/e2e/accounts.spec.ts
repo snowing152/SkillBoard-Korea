@@ -176,11 +176,50 @@ test.describe('google role step', () => {
   });
 });
 
+test.describe('google link confirmation', () => {
+  test('asks before linking and changes nothing until the button is pressed', async ({
+    page,
+    context,
+  }) => {
+    await context.addCookies([
+      {
+        name: 'skillboard_google_nonce',
+        value: 'nonce-of-this-browser',
+        url: 'http://localhost:3000',
+      },
+    ]);
+    await page.goto(`/auth/callback?link=${'l'.repeat(43)}&n=nonce-of-this-browser`);
+    await expect(page).toHaveURL(/\/sign-in\/google\/link$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Link Google?' })).toBeVisible();
+    await expect(
+      page.getByText('Your password will be removed and other sessions signed out'),
+    ).toBeVisible();
+    expect((await context.cookies()).map((c) => c.name)).not.toContain(SESSION_COOKIE);
+
+    // This token was never issued: the API refuses and nothing is linked.
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('button', { name: 'Link Google' }).click();
+    await expect(page.getByText('This step has expired')).toBeVisible();
+    expect((await context.cookies()).map((c) => c.name)).not.toContain(SESSION_COOKIE);
+  });
+
+  test('without the callback cookie there is nothing to confirm: back to sign-in', async ({
+    page,
+  }) => {
+    await page.goto('/sign-in/google/link');
+    await expect(page).toHaveURL(/\/sign-in$/);
+  });
+});
+
 test.describe('google callback binding (login CSRF)', () => {
   const FAILED = 'Google sign-in did not complete';
 
   test('a callback link from another browser is refused: no cookie', async ({ page }) => {
-    for (const query of ['code=forged-code-from-attacker&n=abc', 'signup=forged&n=abc']) {
+    for (const query of [
+      'code=forged-code-from-attacker&n=abc',
+      'signup=forged&n=abc',
+      `link=${'l'.repeat(43)}&n=abc`,
+    ]) {
       await page.goto(`/auth/callback?${query}`);
       await expect(page).toHaveURL(/\/sign-in\?error=OAUTH_FAILED$/);
       await expect(page.getByText(FAILED)).toBeVisible();

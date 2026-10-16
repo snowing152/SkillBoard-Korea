@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 import { z } from 'zod';
 import { api } from '@/lib/api';
 import { type ActionResult, toActionFailure } from '@/lib/api-errors';
-import { GOOGLE_SIGNUP_COOKIE } from '@/lib/session-cookies';
+import { GOOGLE_LINK_COOKIE, GOOGLE_SIGNUP_COOKIE } from '@/lib/session-cookies';
 import { setSession } from '@/lib/session';
 import type { SessionOutcome } from '@/actions/auth';
 
@@ -43,6 +43,36 @@ export async function completeGoogleSignUp(
   }
   await setSession(session);
   store.delete(GOOGLE_SIGNUP_COOKIE);
+  return {
+    ok: true,
+    data: {
+      pendingConsents: session.user.pendingConsents,
+      roles: session.user.roles,
+      locale: session.user.locale,
+    },
+  };
+}
+
+/**
+ * The link confirmation: the person agreed to join Google to the existing account with the same email,
+ * which removes its password and signs every other session out (ADR 0025). The link token sits in an
+ * httpOnly cookie set by the callback; nothing else comes from the browser.
+ */
+export async function confirmGoogleLink(): Promise<ActionResult<SessionOutcome>> {
+  const store = await cookies();
+  const linkToken = store.get(GOOGLE_LINK_COOKIE)?.value;
+  if (!linkToken) return { ok: false, code: 'NOT_FOUND' };
+
+  let session: AuthSession;
+  try {
+    const { data, error } = await api.POST('/v1/auth/google/link', { body: { linkToken } });
+    if (!data) return toActionFailure(error);
+    session = data;
+  } catch (err: unknown) {
+    return toActionFailure(err);
+  }
+  await setSession(session);
+  store.delete(GOOGLE_LINK_COOKIE);
   return {
     ok: true,
     data: {

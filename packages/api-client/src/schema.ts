@@ -196,6 +196,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/auth/google/link': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['AuthController_linkGoogle'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/auth/exchange': {
     parameters: {
       query?: never;
@@ -408,6 +424,9 @@ export interface components {
       locale: 'en' | 'ko' | 'ru';
       /** @enum {boolean} */
       acceptTerms: true;
+    };
+    GoogleLinkDto: {
+      linkToken: string;
     };
     ExchangeDto: {
       code: string;
@@ -1281,7 +1300,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Redirect to the web app with ?code= or ?error= */
+      /** @description Redirect to the web app with ?code=, ?signup=, ?link= or ?error= */
       302: {
         headers: {
           [name: string]: unknown;
@@ -1300,6 +1319,29 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': components['schemas']['GoogleCompleteDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AuthSessionDto'];
+        };
+      };
+    };
+  };
+  AuthController_linkGoogle: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GoogleLinkDto'];
       };
     };
     responses: {

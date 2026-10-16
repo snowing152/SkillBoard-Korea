@@ -295,7 +295,7 @@
         ],
         "responses": {
           "302": {
-            "description": "Redirect to the web app with ?code= or ?error="
+            "description": "Redirect to the web app with ?code=, ?signup=, ?link= or ?error="
           }
         },
         "tags": ["auth"]
@@ -311,6 +311,35 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/GoogleCompleteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSessionDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["auth"]
+      }
+    },
+    "/v1/auth/google/link": {
+      "post": {
+        "operationId": "AuthController_linkGoogle",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleLinkDto"
               }
             }
           }
@@ -943,6 +972,16 @@
           }
         },
         "required": ["signupToken", "role", "locale", "acceptTerms"]
+      },
+      "GoogleLinkDto": {
+        "type": "object",
+        "properties": {
+          "linkToken": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          }
+        },
+        "required": ["linkToken"]
       },
       "ExchangeDto": {
         "type": "object",

@@ -9,6 +9,8 @@ export const REFRESH_COOKIE = `${APP_SLUG}_refresh`;
 /** Holds the opaque Google sign-up token between the callback and the role-choice step (10 minutes). */
 export const GOOGLE_SIGNUP_COOKIE = `${APP_SLUG}_google_signup`;
 export const GOOGLE_SIGNUP_MAX_AGE_SECONDS = 600;
+/** Holds the opaque Google link token between the callback and the link confirmation (10 minutes). */
+export const GOOGLE_LINK_COOKIE = `${APP_SLUG}_google_link`;
 /** The browser-binding nonce of a Google flow: set by `/auth/google`, checked by `/auth/callback`. */
 export const GOOGLE_NONCE_COOKIE = `${APP_SLUG}_google_nonce`;
 

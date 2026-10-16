@@ -8,6 +8,7 @@ import { safeNextPath } from '@/lib/safe-path';
 import {
   cookieOptions,
   GOOGLE_NONCE_COOKIE,
+  GOOGLE_LINK_COOKIE,
   GOOGLE_SIGNUP_COOKIE,
   GOOGLE_SIGNUP_MAX_AGE_SECONDS,
   REFRESH_COOKIE,
@@ -19,7 +20,8 @@ import { routing } from '@/i18n/routing';
 type Params = { params: Promise<{ locale: string }> };
 
 /**
- * Where the API's Google callback sends the browser (`/<locale>/auth/callback?code=…&next=…`). The
+ * Where the API's Google callback sends the browser (`/<locale>/auth/callback?code=…&next=…`, or
+ * `signup=…` / `link=…` for the steps a person confirms by POST). The
  * single-use code is exchanged for a session here, on the server, so no token ever appears in a URL
  * or in browser JavaScript. Failure of any kind lands on `/sign-in?error=<CODE>` (ADR 0020).
  */
@@ -33,6 +35,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   const error = search.get('error');
   const code = search.get('code');
   const signup = search.get('signup');
+  const link = search.get('link');
 
   // A `code` or `signup` token is only honoured in the browser that started the flow here: the nonce in
   // the URL must equal the one in this browser's cookie (login CSRF, ADR 0024). The cookie is one-shot.
@@ -43,7 +46,19 @@ export async function GET(request: NextRequest, { params }: Params) {
     response.cookies.delete(GOOGLE_NONCE_COOKIE);
     return response;
   };
-  if ((code !== null || signup !== null) && !nonceMatches) return failed();
+  if ((code !== null || signup !== null || link !== null) && !nonceMatches) return failed();
+
+  // A Google user whose email belongs to an existing account: nothing is linked yet. Linking removes the
+  // password and signs every session out, so the owner confirms it by POST on the next page (ADR 0025).
+  if (error === null && code === null && link !== null && /^[A-Za-z0-9_-]{43}$/.test(link)) {
+    const safe = safeNextPath(search.get('next') ?? undefined, '');
+    const response = go(
+      safe ? `/sign-in/google/link?next=${encodeURIComponent(safe)}` : '/sign-in/google/link',
+    );
+    response.cookies.delete(GOOGLE_NONCE_COOKIE);
+    response.cookies.set(GOOGLE_LINK_COOKIE, link, cookieOptions(GOOGLE_SIGNUP_MAX_AGE_SECONDS));
+    return response;
+  }
 
   // A Google user without an account: the API created nothing and handed over a signed token. It goes
   // into an httpOnly cookie (never into browser JavaScript or the page URL) for the role-choice step.

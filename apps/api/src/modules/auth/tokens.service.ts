@@ -6,7 +6,7 @@ import type { Env } from '../../common/config/env.js';
 import { ApiError } from '../../common/errors/api-error.js';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
 import type { Prisma } from '../../generated/prisma/client.js';
-import type { TokenPurpose } from '../../generated/prisma/enums.js';
+import type { OAuthParkIntent, TokenPurpose } from '../../generated/prisma/enums.js';
 
 /** Lifetime of each one-time token purpose (accounts spec). */
 const TOKEN_TTL_MS: Record<TokenPurpose, number> = {
@@ -323,11 +323,15 @@ export class TokensService {
   // ---- Google sign-up step -------------------------------------------------------------------
 
   /**
-   * Parks a Google identity until its owner chooses a role. Returns an opaque token for the URL: the
-   * identity itself (email, name) stays in the database and never travels in a link or a log. Expired
-   * rows are swept here, so personal data lives at most ten minutes beyond its use.
+   * Parks a Google identity until its owner chooses a role (`SIGNUP`) or confirms linking it to the
+   * existing account with the same email (`LINK`). Returns an opaque token for the URL: the identity
+   * itself (email, name) stays in the database and never travels in a link or a log. Expired rows are
+   * swept here, so personal data lives at most ten minutes beyond its use.
    */
-  async issueOAuthSignup(identity: OAuthSignupIdentity): Promise<string> {
+  async issueOAuthSignup(
+    identity: OAuthSignupIdentity,
+    intent: OAuthParkIntent = 'SIGNUP',
+  ): Promise<string> {
     const token = this.generate();
     const now = this.now();
     await this.prisma.$transaction([
@@ -335,6 +339,7 @@ export class TokensService {
       this.prisma.oAuthSignup.create({
         data: {
           tokenHash: this.hash(token),
+          intent,
           provider: 'GOOGLE',
           providerUserId: identity.providerUserId,
           email: identity.email,
@@ -349,11 +354,13 @@ export class TokensService {
   }
 
   /**
-   * Single use: the row is deleted in the same transaction as `effect` (the account creation), so a
-   * failed creation leaves the token usable and a successful one cannot be repeated.
+   * Single use: the row is deleted in the same transaction as `effect` (the account creation or the
+   * link), so a failed effect leaves the token usable and a successful one cannot be repeated. A token
+   * parked for the other intent is `NOT_FOUND`: a sign-up token never links, a link token never creates.
    */
   async consumeOAuthSignup<T>(
     token: string,
+    intent: OAuthParkIntent,
     effect: (identity: OAuthSignupIdentity, tx: Prisma.TransactionClient) => Promise<T>,
   ): Promise<T> {
     const tokenHash = this.hash(token);
@@ -363,7 +370,8 @@ export class TokensService {
     await this.prisma.oAuthSignup.deleteMany({ where: { expiresAt: { lt: now } } });
     return this.prisma.$transaction(async (tx) => {
       const row = await tx.oAuthSignup.findUnique({ where: { tokenHash } });
-      if (!row) throw new ApiError('NOT_FOUND', 'Token not found or expired');
+      // Unknown, or parked for the other intent: a sign-up token never links, a link token never creates.
+      if (row?.intent !== intent) throw new ApiError('NOT_FOUND', 'Token not found or expired');
       if (row.expiresAt.getTime() <= now.getTime()) {
         throw new ApiError('NOT_FOUND', 'Token not found or expired');
       }

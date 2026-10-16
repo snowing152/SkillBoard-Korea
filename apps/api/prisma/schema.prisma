@@ -136,11 +136,20 @@ model VerificationToken {
   createdAt DateTime     @default(now())
 }
 
-// A Google identity waiting for its owner to choose a role (accounts spec, ADR 0024). Holds personal
-// data for at most 10 minutes: deleted when used, and expired rows are swept on every insert.
+// What a parked Google identity waits for: a role choice (new account) or the owner's confirmation to
+// link it to the existing account with the same email (ADR 0025).
+enum OAuthParkIntent {
+  SIGNUP
+  LINK
+}
+
+// A Google identity waiting for its owner to choose a role (accounts spec, ADR 0024) or to confirm a link
+// (ADR 0025). Holds personal data for at most 10 minutes: deleted when used, and expired rows are swept
+// on every insert.
 model OAuthSignup {
-  id             String       @id @default(uuid(7)) @db.Uuid
-  tokenHash      String       @unique
+  id             String          @id @default(uuid(7)) @db.Uuid
+  tokenHash      String          @unique
+  intent         OAuthParkIntent @default(SIGNUP)
   provider       AuthProvider
   providerUserId String
   email          String

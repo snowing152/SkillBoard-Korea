@@ -406,31 +406,94 @@ describe('AuthService', () => {
       expect(prisma.authIdentity.create).not.toHaveBeenCalled();
     });
 
-    it('links a verified account with the same email', async () => {
+    it('the callback never changes an existing account: it parks the link for confirmation', async () => {
+      // Linking removes the password and signs every session out. A GET flow that a link elsewhere can
+      // start must not do that by itself; only the confirmation POST may (ADR 0025).
       prisma.authIdentity.findUnique.mockResolvedValue(null);
       prisma.user.findUnique.mockResolvedValue({ id: USER_ID, emailVerifiedAt: new Date() });
+      tokens.issueOAuthSignup.mockResolvedValue('opaque-link-token');
+
       const outcome = await service.completeGoogle(google, state);
-      expect(outcome.ok).toBe(true);
-      expect(firstCallArg(prisma.authIdentity.create)).toEqual({
-        data: { provider: 'GOOGLE', providerUserId: 'g-1', userId: USER_ID },
+
+      expect(outcome).toEqual({ ok: true, kind: 'link', linkToken: 'opaque-link-token' });
+      expect(tokens.issueOAuthSignup).toHaveBeenCalledWith(
+        expect.objectContaining({ providerUserId: 'g-1', email: 'parent@example.com' }),
+        'LINK',
+      );
+      expect(prisma.authIdentity.create).not.toHaveBeenCalled();
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(tokens.revokeAll).not.toHaveBeenCalled();
+      expect(tokens.issueOneTime).not.toHaveBeenCalled();
+      expect(service.googleRedirectParams(outcome, { ...state, webNonce: 'w' })).toEqual({
+        link: 'opaque-link-token',
+        n: 'w',
       });
     });
 
-    it('linking ends every session and the password of the account (pre-hijack)', async () => {
-      // Someone may have registered the address first and kept a password and a session: once the
-      // real owner proves the address through Google, both must stop working.
-      prisma.authIdentity.findUnique.mockResolvedValue(null);
-      prisma.user.findUnique.mockResolvedValue({ id: USER_ID, emailVerifiedAt: new Date() });
-      await service.completeGoogle(google, state);
-      expect(tokens.revokeAll).toHaveBeenCalledWith(USER_ID, prisma);
-      expect(prisma.user.update).toHaveBeenCalledWith({
-        where: { id: USER_ID },
-        data: { passwordHash: null },
+    describe('link confirmation', () => {
+      const parkedIdentity = {
+        providerUserId: 'g-1',
+        email: 'parent@example.com',
+        emailVerified: true,
+        displayName: 'Parent',
+        locale: 'en',
+      };
+      beforeEach(() => {
+        tokens.consumeOAuthSignup.mockImplementation(
+          (
+            _token: string,
+            _intent: string,
+            effect: (identity: unknown, tx: unknown) => Promise<string>,
+          ) => effect(parkedIdentity, prisma),
+        );
       });
-      // The exchange code comes after the revocation, or the revocation would void it.
-      expect(tokens.revokeAll.mock.invocationCallOrder[0]).toBeLessThan(
-        tokens.issueOneTime.mock.invocationCallOrder[0] ?? 0,
-      );
+
+      it('links, ends the password and every session in one transaction, then signs in', async () => {
+        // Pre-hijack: whoever registered the address first loses the password and the sessions.
+        prisma.user.findUnique
+          .mockResolvedValueOnce({ id: USER_ID, emailVerifiedAt: new Date() })
+          .mockResolvedValueOnce({ ...row, emailVerifiedAt: new Date() });
+
+        const session = await service.confirmGoogleLink({ linkToken: 'l'.repeat(43) }, 'ua');
+
+        expect(tokens.consumeOAuthSignup).toHaveBeenCalledWith(
+          'l'.repeat(43),
+          'LINK',
+          expect.any(Function),
+        );
+        expect(firstCallArg(prisma.authIdentity.create)).toEqual({
+          data: { provider: 'GOOGLE', providerUserId: 'g-1', userId: USER_ID },
+        });
+        expect(prisma.user.update).toHaveBeenCalledWith({
+          where: { id: USER_ID },
+          data: { passwordHash: null },
+        });
+        expect(tokens.revokeAll).toHaveBeenCalledWith(USER_ID, prisma);
+        // This device's session comes after the revocation, or the revocation would end it too.
+        expect(tokens.revokeAll.mock.invocationCallOrder[0]).toBeLessThan(
+          tokens.issueRefreshChecked.mock.invocationCallOrder[0] ?? 0,
+        );
+        expect(session.user).toMatchObject({ id: USER_ID, hasPassword: false });
+      });
+
+      it('links nothing when the account is gone or no longer verified', async () => {
+        prisma.user.findUnique.mockResolvedValueOnce(null);
+        await expect(
+          service.confirmGoogleLink({ linkToken: 'l'.repeat(43) }),
+        ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+        expect(prisma.authIdentity.create).not.toHaveBeenCalled();
+        expect(tokens.revokeAll).not.toHaveBeenCalled();
+      });
+
+      it('maps an identity linked meanwhile to CONFLICT', async () => {
+        prisma.user.findUnique.mockResolvedValueOnce({ id: USER_ID, emailVerifiedAt: new Date() });
+        prisma.authIdentity.create.mockRejectedValueOnce(
+          new Prisma.PrismaClientKnownRequestError('dup', { code: 'P2002', clientVersion: 'test' }),
+        );
+        await expect(
+          service.confirmGoogleLink({ linkToken: 'l'.repeat(43) }),
+        ).rejects.toMatchObject({ code: 'CONFLICT' });
+      });
     });
 
     it('creates and parks nothing for an address Google has not verified', async () => {
@@ -537,7 +600,11 @@ describe('AuthService', () => {
 
     it('role step: creates the chosen role with both consents from the parked identity', async () => {
       tokens.consumeOAuthSignup.mockImplementation(
-        (_token: string, effect: (identity: unknown, tx: unknown) => Promise<string>) =>
+        (
+          _token: string,
+          _intent: string,
+          effect: (identity: unknown, tx: unknown) => Promise<string>,
+        ) =>
           effect(
             {
               providerUserId: 'g-1',

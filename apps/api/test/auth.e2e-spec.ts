@@ -29,6 +29,7 @@ const EMAILS = {
   main: 'e2e-auth@skillboard.local',
   google: 'e2e-auth-google@skillboard.local',
   googleNew: 'e2e-auth-google-new@skillboard.local',
+  linked: 'e2e-auth-linked@skillboard.local',
   unknown: 'e2e-auth-nobody@skillboard.local',
 };
 const PASSWORD = TEST_PASSWORD;
@@ -468,6 +469,64 @@ describe('auth and accounts (e2e)', () => {
     await request(server)
       .post('/v1/auth/google/complete')
       .send({ ...body, signupToken: 'x'.repeat(43), acceptTerms: true })
+      .expect(404);
+  });
+
+  it('links Google to an existing account only after the confirmation POST', async () => {
+    const auth = app.get(AuthService);
+    const before = await auth.register({
+      email: EMAILS.linked,
+      password: PASSWORD,
+      displayName: 'E2E Linked',
+      role: 'TALENT',
+      locale: 'en',
+      acceptTerms: true,
+    });
+    await prisma.user.update({
+      where: { email: EMAILS.linked },
+      data: { emailVerifiedAt: new Date() },
+    });
+    const google = {
+      id: 'e2e-google-sub-3',
+      email: EMAILS.linked,
+      emailVerified: true,
+      displayName: 'Linked',
+    };
+    const outcome = await auth.completeGoogle(google, {
+      purpose: 'oauth_state',
+      locale: 'en',
+      nonce: 'e2e',
+    });
+    if (!outcome.ok || outcome.kind !== 'link') throw new Error('expected the link confirmation');
+
+    // The GET flow changed nothing: no identity yet, the password and the old session still work.
+    expect(await prisma.authIdentity.count({ where: { userId: before.user.id } })).toBe(0);
+    await auth.login({ email: EMAILS.linked, password: PASSWORD });
+    // The role step cannot spend a link token.
+    await request(server)
+      .post('/v1/auth/google/complete')
+      .send({ signupToken: outcome.linkToken, role: 'TALENT', locale: 'en', acceptTerms: true })
+      .expect(404);
+
+    const res = await request(server)
+      .post('/v1/auth/google/link')
+      .send({ linkToken: outcome.linkToken })
+      .expect(200);
+    const session = AuthSessionSchema.parse(res.body);
+    expect(session.user).toMatchObject({ id: before.user.id, hasPassword: false });
+    expect(await prisma.authIdentity.count({ where: { userId: before.user.id } })).toBe(1);
+    // Pre-hijack closed: the password and every earlier session are gone; this device stays in.
+    await expect(auth.login({ email: EMAILS.linked, password: PASSWORD })).rejects.toMatchObject({
+      code: 'UNAUTHENTICATED',
+    });
+    await expect(auth.refresh(before.refreshToken)).rejects.toMatchObject({
+      code: 'UNAUTHENTICATED',
+    });
+    await auth.refresh(session.refreshToken);
+    // Single use.
+    await request(server)
+      .post('/v1/auth/google/link')
+      .send({ linkToken: outcome.linkToken })
       .expect(404);
   });
 

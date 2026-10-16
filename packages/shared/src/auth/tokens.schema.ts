@@ -66,3 +66,13 @@ export const GoogleCompleteSchema = z.object({
   acceptTerms: z.literal(true),
 });
 export type GoogleComplete = z.infer<typeof GoogleCompleteSchema>;
+
+/**
+ * POST /v1/auth/google/link: the owner confirms linking a Google identity to the existing account with
+ * the same email, which removes its password and signs every session out (ADR 0025). `linkToken` is the
+ * opaque token the callback handed to the web server, never to browser JavaScript.
+ */
+export const GoogleLinkSchema = z.object({
+  linkToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+});
+export type GoogleLink = z.infer<typeof GoogleLinkSchema>;

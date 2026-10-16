@@ -30,6 +30,7 @@ import { AuthService, type GoogleOutcome } from './auth.service.js';
 import { AuthSessionDto } from './dto/auth-session.dto.js';
 import { ExchangeDto } from './dto/exchange.dto.js';
 import { GoogleCompleteDto } from './dto/google-complete.dto.js';
+import { GoogleLinkDto } from './dto/google-link.dto.js';
 import { GoogleStartQueryDto } from './dto/google-start-query.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { LogoutDto } from './dto/logout.dto.js';
@@ -137,7 +138,10 @@ export class AuthController {
   @Get('google/callback')
   @Public()
   @UseGuards(GoogleCallbackGuard)
-  @ApiResponse({ status: 302, description: 'Redirect to the web app with ?code= or ?error=' })
+  @ApiResponse({
+    status: 302,
+    description: 'Redirect to the web app with ?code=, ?signup=, ?link= or ?error=',
+  })
   async googleCallback(
     @Req() req: Request,
     @Res() res: Response,
@@ -170,6 +174,16 @@ export class AuthController {
     @UserAgent() userAgent?: string,
   ): Promise<AuthSession> {
     return this.auth.completeGoogleSignup(body, userAgent);
+  }
+
+  /** The link confirmation step (ADR 0025): the only place a Google identity joins an existing account. */
+  @Post('google/link')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ZodSerializerDto(AuthSessionDto)
+  @ApiOkResponse({ type: AuthSessionDto })
+  linkGoogle(@Body() body: GoogleLinkDto, @UserAgent() userAgent?: string): Promise<AuthSession> {
+    return this.auth.confirmGoogleLink(body, userAgent);
   }
 
   @Post('exchange')

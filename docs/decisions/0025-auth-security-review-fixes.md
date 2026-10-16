@@ -21,7 +21,11 @@ the address first (pre-hijack) kept access after the real owner verified it and 
   revoked or expired → plain 401; rotated longer ago than the grace → revoke all.
 - **Linking a Google identity to an existing account** clears that account's `passwordHash` and revokes
   all its refresh tokens in the same transaction as the link; the owner sets a password through the reset
-  mail. A Google profile without `email_verified` never creates an account or a parked sign-up
+  mail. Because that is destructive, the callback (a GET flow that a link on any site can start) never
+  links: it parks the identity (`OAuthSignup.intent = LINK`, 10 minutes, opaque `link` token in an
+  `HttpOnly` web cookie) and `/sign-in/google/link` asks "Link Google? Your password will be removed and
+  other sessions signed out". Only that POST (`POST /v1/auth/google/link`) links and signs the device in.
+  A token parked for one intent is `NOT_FOUND` for the other endpoint. A Google profile without `email_verified` never creates an account or a parked sign-up
   (`error=OAUTH_FAILED`).
 - **A link carries no consent.** The Google callback never creates an account: every unknown Google user
   is parked and goes through the role step, whose POST (Server Action, origin-checked) records the

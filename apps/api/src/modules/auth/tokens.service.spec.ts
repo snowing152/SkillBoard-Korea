@@ -388,10 +388,11 @@ describe('TokensService', () => {
         where: { expiresAt: { lt: NOW } },
       });
       const { data } = firstCallArg(prisma.oAuthSignup.create) as {
-        data: { tokenHash: string; expiresAt: Date; email: string };
+        data: { tokenHash: string; expiresAt: Date; email: string; intent: string };
       };
       expect(data.tokenHash).toBe(sha(token));
       expect(data.email).toBe('parent@example.com');
+      expect(data.intent).toBe('SIGNUP');
       expect(data.expiresAt).toEqual(secondsAhead(600));
     });
 
@@ -402,12 +403,13 @@ describe('TokensService', () => {
       emailVerified: true,
       displayName: 'Parent',
       locale: 'ru',
+      intent: 'SIGNUP',
       expiresAt: secondsAhead(100),
     };
 
     it('consume sweeps expired rows first, outside the transaction that may roll back', async () => {
       prisma.oAuthSignup.findUnique.mockResolvedValue(null);
-      await expect(service.consumeOAuthSignup('tok', jest.fn())).rejects.toBeDefined();
+      await expect(service.consumeOAuthSignup('tok', 'SIGNUP', jest.fn())).rejects.toBeDefined();
       expect(firstCallArg(prisma.oAuthSignup.deleteMany)).toEqual({
         where: { expiresAt: { lt: NOW } },
       });
@@ -417,7 +419,7 @@ describe('TokensService', () => {
       prisma.oAuthSignup.findUnique.mockResolvedValue(row);
       prisma.oAuthSignup.deleteMany.mockResolvedValue({ count: 1 });
       const effect = jest.fn().mockResolvedValue('user-id');
-      await expect(service.consumeOAuthSignup('tok', effect)).resolves.toBe('user-id');
+      await expect(service.consumeOAuthSignup('tok', 'SIGNUP', effect)).resolves.toBe('user-id');
       expect(effect).toHaveBeenCalledWith(
         expect.objectContaining({ email: 'parent@example.com', locale: 'ru' }),
         prisma,
@@ -428,10 +430,12 @@ describe('TokensService', () => {
     it.each([
       ['unknown', null],
       ['expired', { ...row, expiresAt: secondsAgo(1) }],
+      // A sign-up token never links and a link token never creates an account.
+      ['parked for the other intent', { ...row, intent: 'LINK' }],
     ])('consume answers NOT_FOUND for a token that is %s', async (_name, found) => {
       prisma.oAuthSignup.findUnique.mockResolvedValue(found);
       const effect = jest.fn();
-      await expect(service.consumeOAuthSignup('tok', effect)).rejects.toMatchObject({
+      await expect(service.consumeOAuthSignup('tok', 'SIGNUP', effect)).rejects.toMatchObject({
         code: 'NOT_FOUND',
       });
       expect(effect).not.toHaveBeenCalled();
@@ -441,7 +445,7 @@ describe('TokensService', () => {
       prisma.oAuthSignup.findUnique.mockResolvedValue(row);
       prisma.oAuthSignup.deleteMany.mockResolvedValue({ count: 0 });
       const effect = jest.fn();
-      await expect(service.consumeOAuthSignup('tok', effect)).rejects.toMatchObject({
+      await expect(service.consumeOAuthSignup('tok', 'SIGNUP', effect)).rejects.toMatchObject({
         code: 'NOT_FOUND',
       });
       expect(effect).not.toHaveBeenCalled();
