@@ -26,6 +26,11 @@ describe('validateEnv', () => {
     ).toThrow(/RATE_LIMIT_DISABLED/);
   });
 
+  it('defaults the refresh grace window to 120 s, long enough for a cold API start', () => {
+    // Safe since a repeat inside the window gets the same successor (ADR 0025).
+    expect(validateEnv({ ...base, NODE_ENV: 'test' }).REFRESH_GRACE_SECONDS).toBe(120);
+  });
+
   it('accepts both in development and test', () => {
     for (const NODE_ENV of ['development', 'test']) {
       expect(validateEnv({ ...base, NODE_ENV, RATE_LIMIT_DISABLED: 'true' })).toMatchObject({

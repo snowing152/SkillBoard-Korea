@@ -32,8 +32,12 @@ export const EnvSchema = z
     /** Mixed into the sha256 of every refresh, verification and reset token before it is stored. */
     JWT_REFRESH_PEPPER: z.string().min(32),
     REFRESH_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(30),
-    /** A token rotated less than this many seconds ago is a concurrent refresh, not a replay (ADR 0020). */
-    REFRESH_GRACE_SECONDS: z.coerce.number().int().min(0).max(120).default(30),
+    /**
+     * A token rotated less than this many seconds ago is a concurrent refresh, not a replay (ADR 0020).
+     * 120 s covers a cold API start (ADR 0013) whose refresh answer the proxy gave up on; safe because a
+     * repeat inside the window gets the same successor, never a second chain (ADR 0025).
+     */
+    REFRESH_GRACE_SECONDS: z.coerce.number().int().min(0).max(120).default(120),
     /** `console` prints the link instead of sending; it is refused in production so no token is logged there. */
     EMAIL_PROVIDER: z.enum(['console', 'resend']).default('console'),
     RESEND_API_KEY: z.string().min(1).optional(),

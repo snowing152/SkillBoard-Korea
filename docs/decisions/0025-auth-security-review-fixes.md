@@ -17,7 +17,9 @@ the address first (pre-hijack) kept access after the real owner verified it and 
   `HMAC-SHA256(JWT_REFRESH_PEPPER, "refresh-successor:" + presented)`, base64url (same 43-character shape).
   Only its `sha256(token + pepper)` is stored, as before. A repeat inside `REFRESH_GRACE_SECONDS` returns
   that same successor (looked up by its hash) instead of minting another; if it was revoked or expired
-  meanwhile, plain `UNAUTHENTICATED`. Everything else in the 0024 `/refresh` bullet stands: unknown,
+  meanwhile, plain `UNAUTHENTICATED`. The default `REFRESH_GRACE_SECONDS` rises from 30 to 120 (the
+  maximum): long enough for a cold API start (ADR 0013) whose refresh answer the proxy gave up on after
+  5 s. Everything else in the 0024 `/refresh` bullet stands: unknown,
   revoked or expired → plain 401; rotated longer ago than the grace → revoke all. Logging out with a rotated
   token follows its successors and revokes the whole chain (at most 100 steps, else every session of
   the user), so a copy a thief moved on does not outlive the sign-out.
@@ -40,7 +42,11 @@ the address first (pre-hijack) kept access after the real owner verified it and 
 
 Parallel tabs and a thief inside the window now share one chain, so the next replay of either copy after
 the window revokes everything. Tokens rotated before this change have a random successor, so a repeat of
-one inside its grace window gets a 401 once; harmless before launch. The grace window may now be raised
-without creating untracked chains. A person who links Google to a password account loses the password and
+one inside its grace window gets a 401 once; harmless before launch. The 120 s window creates no
+untracked chains: inside it a thief only ever gets the victim's own successor. It also means a stolen,
+just-rotated token keeps working for up to two minutes without being detected (it yields the same chain,
+which the next replay outside the window revokes). Still open: a browser that comes back with a lost
+refresh response more than 120 s later is treated as a replay and every session is revoked
+(`docs/tech-debt.md`). A person who links Google to a password account loses the password and
 is signed out elsewhere, once; the account settings page already offers "set a password" by mail.
 Google sign-up from `/sign-up` takes one more screen (tick the box, press "Create account").

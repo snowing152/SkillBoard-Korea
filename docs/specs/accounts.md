@@ -122,7 +122,7 @@ now()`, `passwordHash = null`, sign-up consents).
   `EMAIL_PROVIDER=console` when `NODE_ENV=production`, so rule 11 holds where it matters). Subjects and
   bodies for the two emails in `mail/templates.ts` as `Record<Locale, …>`; the user's `locale` picks one.
 - Env (`EnvSchema` + `.env.example`): `JWT_REFRESH_PEPPER` (min 32), `REFRESH_TTL_DAYS` (1–90, default
-  30), `REFRESH_GRACE_SECONDS` (0–120, default 30, ADR 0020), `EMAIL_PROVIDER` (`console` | `resend`, default `console`), `RESEND_API_KEY` (required when
+  30), `REFRESH_GRACE_SECONDS` (0–120, default 120, ADR 0020/0025), `EMAIL_PROVIDER` (`console` | `resend`, default `console`), `RESEND_API_KEY` (required when
   `resend`), `EMAIL_FROM` (default `SkillBoard Korea <noreply@localhost>`), `GOOGLE_CLIENT_ID`,
   `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL` (all three optional; Google routes answer `NOT_FOUND`
   while any is missing). Web: `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` (`'true'` | `'false'`, default `'false'`)
