@@ -12,6 +12,11 @@ export const TEST_RESET_PASSWORD = 'New-password-1';
 export const TEST_WRONG_PASSWORD = 'Not-the-password-1';
 /** A password that is valid by length but belongs to nobody in a test. */
 export const TEST_STRANGER_PASSWORD = 'stranger-password-0';
+/**
+ * The string the login's constant-time dummy hash was once made from. It signed in to every account
+ * without a password (docs/pitfalls.md); a regression test keeps it failing.
+ */
+export const TEST_FORMER_DUMMY_PASSWORD = 'dummy-password-for-constant-time-login';
 
 /** Unit tests: signs the access tokens of a `JwtModule` that exists only inside the test. */
 export const TEST_JWT_SECRET = 'x'.repeat(32);

@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import { AuthSessionSchema, LEGAL_VERSIONS } from '@skillboard/shared';
 import { argon2id, hash } from 'argon2';
 import {
+  TEST_FORMER_DUMMY_PASSWORD,
   TEST_GOOGLE_CLIENT_SECRET,
   TEST_JWT_SECRET,
   TEST_OTHER_PASSWORD,
@@ -170,6 +171,18 @@ describe('AuthService', () => {
         code: 'UNAUTHENTICATED',
         message: 'Invalid email or password',
       });
+    });
+
+    it('never signs in an account without a password, whatever password is sent', async () => {
+      // Google-only accounts have no hash; the dummy hash used for timing must not stand in for one.
+      for (const password of [TEST_FORMER_DUMMY_PASSWORD, PASSWORD]) {
+        prisma.user.findUnique.mockResolvedValueOnce({ ...row, passwordHash: null });
+        await expect(service.login({ email: EMAIL, password })).rejects.toMatchObject({
+          code: 'UNAUTHENTICATED',
+          message: 'Invalid email or password',
+        });
+      }
+      expect(tokens.issueRefreshChecked).not.toHaveBeenCalled();
     });
 
     it('signs in an unverified user, with a refresh token', async () => {

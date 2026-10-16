@@ -50,10 +50,11 @@ type UserRow = Prisma.UserGetPayload<{ select: typeof userSelect }>;
 type Account = Omit<AuthUser, 'pendingConsents'>;
 
 /**
- * Hash of an unguessable password, verified when the email is unknown so that login takes the same
- * time whether or not the account exists (no user enumeration through timing).
+ * Hash of a random password made at boot, verified when the account has no password (unknown email or
+ * Google-only) so that login takes the same time either way (no user enumeration through timing). Its
+ * result is never trusted: a known string here once signed in to every Google account (docs/pitfalls.md).
  */
-const DUMMY_HASH_PROMISE = hash('dummy-password-for-constant-time-login', { type: argon2id });
+const DUMMY_HASH_PROMISE = hash(randomBytes(32).toString('base64url'), { type: argon2id });
 
 const STATE_TTL = '10m';
 const DISPLAY_NAME_MAX = 50;
@@ -119,13 +120,14 @@ export class AuthService {
       where: { email: input.email },
       select: userSelect,
     });
-    const ok = user?.passwordHash
-      ? await verify(user.passwordHash, input.password)
-      : await verify(await DUMMY_HASH_PROMISE, input.password);
-    if (!user || !ok) {
-      // One message for "no such email", "Google-only account" and "wrong password" (ADR 0018).
-      throw new ApiError('UNAUTHENTICATED', 'Invalid email or password');
+    // One message for "no such email", "Google-only account" and "wrong password" (ADR 0018).
+    const refused = new ApiError('UNAUTHENTICATED', 'Invalid email or password');
+    if (!user?.passwordHash) {
+      // Same argon2 work as a real check, result ignored: an account without a password never signs in with one.
+      await verify(await DUMMY_HASH_PROMISE, input.password);
+      throw refused;
     }
+    if (!(await verify(user.passwordHash, input.password))) throw refused;
     return this.session(toAccount(user), userAgent, user.passwordHash);
   }
 
@@ -507,13 +509,13 @@ export class AuthService {
   }
 
   /**
-   * `verifiedHash`: the password hash a login just checked (`null` = none), re-read under the user lock
-   * before the refresh token is issued. `undefined` skips the check (sign-up, exchange).
+   * `verifiedHash`: the password hash a login just checked, re-read under the user lock before the
+   * refresh token is issued. `undefined` skips the check (sign-up, exchange).
    */
   private async session(
     account: Account,
     userAgent?: string,
-    verifiedHash?: string | null,
+    verifiedHash?: string,
   ): Promise<AuthSession> {
     const refresh = await this.tokens.issueRefreshChecked(account.id, userAgent, async (tx) => {
       if (verifiedHash === undefined) return true;
