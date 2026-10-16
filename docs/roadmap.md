@@ -19,8 +19,12 @@ What to build in which order, and how each later item plugs into the architectur
 Two agents can work at once on `accounts` and `search`. After 6, the MVP scope of `FABLE_BRIEF.md` is
 complete except what the launch checklist below lists.
 
-## Launch checklist (owner tasks, no code)
+## Launch checklist (owner tasks, plus code launch blockers)
 
+- **Code, launch blocker:** auth rate limits must see the real client IP, not the Next server's
+  (`docs/tech-debt.md`).
+- **Code, launch blocker:** bind the Google `signup` token and exchange `code` to the browser at the API
+  (PKCE-style verifier, `docs/tech-debt.md`).
 - Create the Google OAuth client, Resend domain, Supabase database in Seoul (ADR 0021), Render service and Vercel project
   (ADR 0013); fill the env variables from `.env.example` on each host; add the API Dockerfile
   (`docs/tech-debt.md`).
