@@ -214,11 +214,20 @@ describe('TokensService', () => {
       });
     });
 
-    it('logout of one token only touches that user’s row', async () => {
-      await service.revoke(USER_ID, 'presented-token');
-      expect(firstCallArg(prisma.refreshToken.updateMany)).toMatchObject({
-        where: { userId: USER_ID, tokenHash: sha('presented-token'), revokedAt: null },
+    it('logout of one token revokes that row only, under its owner’s lock', async () => {
+      prisma.refreshToken.findUnique.mockResolvedValue({ userId: USER_ID });
+      await service.revoke('presented-token');
+      expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+      expect(firstCallArg(prisma.refreshToken.updateMany)).toEqual({
+        where: { tokenHash: sha('presented-token'), revokedAt: null },
+        data: { revokedAt: NOW },
       });
+    });
+
+    it('logout of an unknown token touches nothing', async () => {
+      prisma.refreshToken.findUnique.mockResolvedValue(null);
+      await service.revoke('unknown-token');
+      expect(prisma.refreshToken.updateMany).not.toHaveBeenCalled();
     });
 
     it('revokeAllExcept spares the named token and reaches the rest', async () => {

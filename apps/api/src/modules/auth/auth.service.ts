@@ -141,12 +141,17 @@ export class AuthService {
     return this.sessionWith(toAccount(user), rotated);
   }
 
-  async logout(userId: string, input: Logout): Promise<void> {
-    if (input.all) {
-      await this.tokens.revokeAll(userId);
-    } else if (input.refreshToken) {
-      await this.tokens.revoke(userId, input.refreshToken);
+  /**
+   * One device: the refresh token is the credential for its own session, so no access token is needed
+   * (the web may sign out after its access cookie expired). Every device needs the signed-in user.
+   */
+  async logout(userId: string | undefined, input: Logout): Promise<void> {
+    if (!input.all && input.refreshToken) {
+      await this.tokens.revoke(input.refreshToken);
+      return;
     }
+    if (!userId) throw new ApiError('UNAUTHENTICATED', 'Sign in required');
+    if (input.all) await this.tokens.revokeAll(userId);
   }
 
   // ---- email verification and password reset --------------------------------------------------

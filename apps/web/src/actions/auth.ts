@@ -81,10 +81,11 @@ export async function signUp(input: Register): Promise<ActionResult<SessionOutco
  * `locale` comes from the button: `getLocale()` cannot be called inside a Server Action.
  */
 export async function signOut(locale: Locale): Promise<void> {
-  const [client, refreshToken] = [await apiAsUser(), await getRefreshToken()];
-  if (client && refreshToken) {
+  const refreshToken = await getRefreshToken();
+  if (refreshToken) {
     try {
-      await client.POST('/v1/auth/logout', { body: { refreshToken, all: false } });
+      // The refresh token alone ends its session, so an expired access cookie cannot skip the revoke.
+      await api.POST('/v1/auth/logout', { body: { refreshToken, all: false } });
     } catch {
       // The API is unreachable: the cookies are cleared below either way, and the token expires.
     }

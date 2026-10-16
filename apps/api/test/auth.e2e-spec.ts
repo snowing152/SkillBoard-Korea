@@ -251,6 +251,22 @@ describe('auth and accounts (e2e)', () => {
       .expect(401);
   });
 
+  it('logs out with the refresh token alone, when the access token is gone', async () => {
+    // The web signs out after its access cookie expired or the API was down during renewal: the
+    // refresh token is the credential for its own session, so it must still be revoked.
+    const session = AuthSessionSchema.parse((await login(PASSWORD).expect(200)).body);
+    await request(server)
+      .post('/v1/auth/logout')
+      .send({ refreshToken: session.refreshToken })
+      .expect(204);
+    await request(server)
+      .post('/v1/auth/refresh')
+      .send({ refreshToken: session.refreshToken })
+      .expect(401);
+    // Signing out every device still needs the access token.
+    await request(server).post('/v1/auth/logout').send({ all: true }).expect(401);
+  });
+
   it('updates the display name and language, and changes the password', async () => {
     const session = AuthSessionSchema.parse((await login(PASSWORD).expect(200)).body);
     const headers = bearer(session.accessToken);

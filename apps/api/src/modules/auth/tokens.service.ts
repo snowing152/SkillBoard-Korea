@@ -193,14 +193,20 @@ export class TokensService {
   }
 
   /**
-   * Logout of one device. Unknown tokens are ignored (the caller is signed out either way), and a token
-   * of another user is never touched: the `userId` filter comes from the access token, not the body.
+   * Logout of one device, by its refresh token alone: whoever holds the token could use it, so ending it
+   * needs no other proof. Unknown tokens are ignored (the caller is signed out either way).
    */
-  async revoke(userId: string, presented: string): Promise<void> {
+  async revoke(presented: string): Promise<void> {
+    const tokenHash = this.hash(presented);
+    const found = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash },
+      select: { userId: true },
+    });
+    if (!found) return;
     await this.prisma.$transaction(async (tx) => {
-      await this.lockUser(tx, userId);
+      await this.lockUser(tx, found.userId);
       await tx.refreshToken.updateMany({
-        where: { userId, tokenHash: this.hash(presented), revokedAt: null },
+        where: { tokenHash, revokedAt: null },
         data: { revokedAt: this.now() },
       });
     });

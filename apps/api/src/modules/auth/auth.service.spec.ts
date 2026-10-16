@@ -235,11 +235,22 @@ describe('AuthService', () => {
   describe('logout', () => {
     it('revokes one token, or all of the user with `all`', async () => {
       await service.logout(USER_ID, { refreshToken: 'r'.repeat(43), all: false });
-      expect(tokens.revoke).toHaveBeenCalledWith(USER_ID, 'r'.repeat(43));
+      expect(tokens.revoke).toHaveBeenCalledWith('r'.repeat(43));
       expect(tokens.revokeAll).not.toHaveBeenCalled();
 
       await service.logout(USER_ID, { all: true });
       expect(tokens.revokeAll).toHaveBeenCalledWith(USER_ID);
+    });
+
+    it('needs no access token for one device, but does for every device', async () => {
+      await service.logout(undefined, { refreshToken: 'r'.repeat(43), all: false });
+      expect(tokens.revoke).toHaveBeenCalledWith('r'.repeat(43));
+      for (const input of [{ all: true }, { all: false }]) {
+        await expect(service.logout(undefined, input)).rejects.toMatchObject({
+          code: 'UNAUTHENTICATED',
+        });
+      }
+      expect(tokens.revokeAll).not.toHaveBeenCalled();
     });
   });
 

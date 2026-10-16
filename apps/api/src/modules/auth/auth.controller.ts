@@ -81,12 +81,14 @@ export class AuthController {
     return this.auth.refresh(body.refreshToken, userAgent);
   }
 
+  /** Public so a refresh token alone can end its session; `all` still needs the access token. */
   @Post('logout')
+  @Public()
   @ApiBearerAuth()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'Refresh token(s) revoked' })
-  logout(@CurrentUser() user: AuthenticatedUser, @Body() body: LogoutDto): Promise<void> {
-    return this.auth.logout(user.id, body);
+  logout(@Req() req: Request, @Body() body: LogoutDto): Promise<void> {
+    return this.auth.logout(req.user?.id, body);
   }
 
   @Post('verify-email/request')
