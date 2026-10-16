@@ -19,6 +19,8 @@ import { routing } from '@/i18n/routing';
 
 type Params = { params: Promise<{ locale: string }> };
 
+const EXCHANGE_TIMEOUT_MS = 5000;
+
 /**
  * Where the API's Google callback sends the browser (`/<locale>/auth/callback?code=…&next=…`, or
  * `signup=…` / `link=…` for the steps a person confirms by POST). The
@@ -92,6 +94,8 @@ export async function GET(request: NextRequest, { params }: Params) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code }),
+      // A cold or stuck API must not hold the browser's request open (same deadline as the refresh).
+      signal: AbortSignal.timeout(EXCHANGE_TIMEOUT_MS),
       cache: 'no-store',
     });
     const parsed = res.ok ? AuthSessionSchema.safeParse(await res.json()) : null;
