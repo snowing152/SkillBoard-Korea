@@ -1,6 +1,6 @@
 # 0009. Auth in Nest.js: Passport (Google + local), argon2id, access + refresh tokens
 
-Date: 2026-10-14 · Status: Accepted
+Date: 2026-10-14 · Status: Accepted (linking rule amended by 0025: linking clears the password and revokes all sessions)
 
 ## Context
 

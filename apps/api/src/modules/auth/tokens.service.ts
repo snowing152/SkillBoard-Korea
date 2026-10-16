@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, createHmac, randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DEFAULT_LOCALE, type Locale, LocaleSchema } from '@skillboard/shared';
@@ -60,15 +60,27 @@ export class TokensService {
     return randomBytes(32).toString('base64url');
   }
 
+  /**
+   * The refresh token that replaces `presented`, derived rather than random so that a repeat inside the
+   * grace window can be given the same one again (only hashes are stored). Unpredictable without the
+   * pepper; the label keeps it apart from the storage hash.
+   */
+  private successorOf(presented: string): string {
+    const pepper = this.config.get('JWT_REFRESH_PEPPER', { infer: true });
+    return createHmac('sha256', pepper)
+      .update(`refresh-successor:${presented}`)
+      .digest('base64url');
+  }
+
   // ---- refresh tokens -------------------------------------------------------------------------
 
   async issueRefresh(
     userId: string,
     userAgent: string | undefined,
     tx?: Prisma.TransactionClient,
+    token: string = this.generate(),
   ): Promise<IssuedRefreshToken> {
     const db = tx ?? this.prisma;
-    const token = this.generate();
     const ttlDays = this.config.get('REFRESH_TTL_DAYS', { infer: true });
     const expiresAt = new Date(this.now().getTime() + ttlDays * 24 * 60 * 60 * 1000);
     await db.refreshToken.create({
@@ -88,8 +100,9 @@ export class TokensService {
    * or reset, theft response).
    * - unknown, revoked or expired: a plain 401 that touches nothing (a device that sat unused for 30
    *   days, or one signed out by a password change, must not sign the user out elsewhere);
-   * - rotated less than the grace window ago: a concurrent refresh (parallel tabs). A fresh pair is
-   *   issued and nothing else is revoked;
+   * - rotated less than the grace window ago: a concurrent refresh (parallel tabs). The same successor
+   *   is returned again, never a second one, so a thief who got in inside the window shares the victim's
+   *   chain and the next replay of either copy is detected; nothing is revoked;
    * - rotated longer ago: a used token came back, which is replay or theft, so every refresh token of
    *   that user is revoked and the answer is 401;
    * - otherwise: mark this token rotated and issue the next one.
@@ -122,13 +135,30 @@ export class TokensService {
           await this.revokeAll(found.userId, tx);
           return 'replay' as const; // the revocation must commit, so the 401 is thrown outside
         }
-      } else {
-        await tx.refreshToken.updateMany({
-          where: { id: row.id, rotatedAt: null, revokedAt: null },
-          data: { rotatedAt: now },
+        const token = this.successorOf(presented);
+        const successor = await tx.refreshToken.findUnique({
+          where: { tokenHash: this.hash(token) },
+          select: { expiresAt: true, revokedAt: true },
         });
+        const usable =
+          successor !== null &&
+          successor.revokedAt === null &&
+          successor.expiresAt.getTime() > now.getTime();
+        // Signed out meanwhile (or rotated before successors were derived): nothing to hand back.
+        if (!successor || !usable) return 'invalid' as const;
+        return { next: { token, expiresAt: successor.expiresAt } };
       }
-      return { next: await this.issueRefresh(found.userId, userAgent, tx) };
+      await tx.refreshToken.updateMany({
+        where: { id: row.id, rotatedAt: null, revokedAt: null },
+        data: { rotatedAt: now },
+      });
+      const next = await this.issueRefresh(
+        found.userId,
+        userAgent,
+        tx,
+        this.successorOf(presented),
+      );
+      return { next };
     });
 
     if (outcome === 'invalid' || outcome === 'replay') {

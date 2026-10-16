@@ -92,18 +92,46 @@ describe('TokensService', () => {
       expect(prisma.refreshToken.create).toHaveBeenCalledTimes(1);
     });
 
-    it('treats a token rotated 5 s ago as a concurrent refresh: new pair, nothing revoked', async () => {
-      prisma.refreshToken.findUnique.mockResolvedValue({
-        id: 'row-1',
-        userId: USER_ID,
-        expiresAt: secondsAhead(1000),
-        rotatedAt: secondsAgo(5),
-        revokedAt: null,
-      });
-      const rotated = await service.rotate('presented-token', undefined);
+    it('inside the grace window returns the same successor, not a second chain', async () => {
+      const live = { id: 'row-1', userId: USER_ID, expiresAt: secondsAhead(1000), revokedAt: null };
+      prisma.refreshToken.findUnique.mockResolvedValue({ ...live, rotatedAt: null });
+      const first = await service.rotate('presented-token', 'ua');
+      const { data } = firstCallArg(prisma.refreshToken.create) as { data: { tokenHash: string } };
+      expect(data.tokenHash).toBe(sha(first.token));
 
-      expect(rotated.userId).toBe(USER_ID);
-      expect(prisma.refreshToken.create).toHaveBeenCalledTimes(1);
+      // Five seconds later a parallel tab, or a thief, presents the same token again.
+      jest.clearAllMocks();
+      const rotatedRow = { ...live, rotatedAt: secondsAgo(5) };
+      prisma.refreshToken.findUnique
+        .mockResolvedValueOnce(rotatedRow)
+        .mockResolvedValueOnce(rotatedRow)
+        .mockResolvedValueOnce({ expiresAt: first.expiresAt, revokedAt: null });
+      const second = await service.rotate('presented-token', undefined);
+
+      expect(second).toEqual(first);
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+      expect(prisma.refreshToken.updateMany).not.toHaveBeenCalled();
+      // Looked up by the successor's hash: one chain, so a later replay of either copy is detected.
+      expect(prisma.refreshToken.findUnique).toHaveBeenLastCalledWith({
+        where: { tokenHash: sha(first.token) },
+        select: { expiresAt: true, revokedAt: true },
+      });
+    });
+
+    it('inside the grace window, a successor that was revoked meanwhile is a plain 401', async () => {
+      prisma.refreshToken.findUnique
+        .mockResolvedValueOnce({ userId: USER_ID })
+        .mockResolvedValueOnce({
+          id: 'row-1',
+          expiresAt: secondsAhead(1000),
+          rotatedAt: secondsAgo(5),
+          revokedAt: null,
+        })
+        .mockResolvedValueOnce({ expiresAt: secondsAhead(1000), revokedAt: secondsAgo(1) });
+      await expect(service.rotate('presented-token', undefined)).rejects.toMatchObject({
+        code: 'UNAUTHENTICATED',
+      });
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
       expect(prisma.refreshToken.updateMany).not.toHaveBeenCalled();
     });
 
