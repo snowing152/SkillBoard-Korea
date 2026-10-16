@@ -158,7 +158,8 @@ test.describe('session', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'My account' })).toBeVisible();
     await page.getByLabel('Language', { exact: true }).selectOption('ko');
     await page.getByRole('button', { name: 'Save' }).click();
-    await expect(page).toHaveURL(/\/ko\/me\/account$/);
+    // The first request to /ko compiles the route in `next dev`; allow for it.
+    await expect(page).toHaveURL(/\/ko\/me\/account$/, { timeout: 20_000 });
     await expect(page.getByRole('heading', { level: 1, name: '내 계정' })).toBeVisible();
   });
 });
@@ -169,6 +170,42 @@ test.describe('google role step', () => {
   }) => {
     await page.goto('/sign-up/google');
     await expect(page).toHaveURL(/\/sign-up$/);
+  });
+});
+
+test.describe('google callback binding (login CSRF)', () => {
+  const FAILED = 'Google sign-in did not complete';
+
+  test('a callback link from another browser is refused: no cookie', async ({ page }) => {
+    for (const query of ['code=forged-code-from-attacker&n=abc', 'signup=forged&n=abc']) {
+      await page.goto(`/auth/callback?${query}`);
+      await expect(page).toHaveURL(/\/sign-in\?error=OAUTH_FAILED$/);
+      await expect(page.getByText(FAILED)).toBeVisible();
+      const names = (await page.context().cookies()).map((c) => c.name);
+      expect(names).not.toContain(SESSION_COOKIE);
+      expect(names).not.toContain('skillboard_google_signup');
+    }
+  });
+
+  test('a callback link whose nonce differs from this browser’s cookie is refused', async ({
+    page,
+    context,
+  }) => {
+    await context.addCookies([
+      {
+        name: 'skillboard_google_nonce',
+        value: 'cookie-nonce-of-this-browser',
+        url: 'http://localhost:3000',
+      },
+    ]);
+    await page.goto('/auth/callback?code=forged-code-from-attacker&n=attacker-nonce');
+    await expect(page).toHaveURL(/\/sign-in\?error=OAUTH_FAILED$/);
+    expect((await context.cookies()).map((c) => c.name)).not.toContain(SESSION_COOKIE);
+  });
+
+  test('the start route does nothing while Google is switched off', async ({ page }) => {
+    await page.goto('/auth/google?role=CLIENT&acceptTerms=true');
+    await expect(page).toHaveURL(/\/sign-in\?error=OAUTH_FAILED$/);
   });
 });
 

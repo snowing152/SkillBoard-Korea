@@ -47,6 +47,14 @@ export const GoogleStartQuerySchema = z
     locale: LocaleSchema,
     acceptTerms: z.literal('true').optional(),
     next: SafePathSchema.optional(),
+    /**
+     * Random value the web app keeps in its own cookie and expects back in the final redirect, so that a
+     * callback link made in someone else's browser is useless (login CSRF). Opaque to the API.
+     */
+    webNonce: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{16,64}$/)
+      .optional(),
   })
   .refine((q) => (q.role === undefined) === (q.acceptTerms === undefined), {
     path: ['acceptTerms'],

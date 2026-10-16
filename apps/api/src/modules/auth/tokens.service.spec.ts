@@ -27,6 +27,12 @@ describe('TokensService', () => {
   const prisma = {
     refreshToken: { create: jest.fn(), findUnique: jest.fn(), updateMany: jest.fn() },
     verificationToken: { create: jest.fn(), findUnique: jest.fn(), updateMany: jest.fn() },
+    oAuthSignup: {
+      create: jest.fn(),
+      deleteMany: jest.fn(),
+      findUnique: jest.fn(),
+    },
+    $queryRaw: jest.fn(),
     $transaction: jest.fn(),
   };
   let service: TokensService;
@@ -266,6 +272,106 @@ describe('TokensService', () => {
       prisma.verificationToken.updateMany.mockResolvedValue({ count: 0 });
       const effect = jest.fn();
       await expect(service.consumeOneTime('tok', 'EMAIL_VERIFY', effect)).rejects.toMatchObject({
+        code: 'NOT_FOUND',
+      });
+      expect(effect).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('locking', () => {
+    it('rotation and every revoke lock the user row first', async () => {
+      prisma.refreshToken.findUnique.mockResolvedValue({
+        id: 'row-1',
+        userId: USER_ID,
+        expiresAt: secondsAhead(1000),
+        rotatedAt: null,
+        revokedAt: null,
+      });
+      await service.rotate('presented-token', undefined);
+      await service.revokeAll(USER_ID);
+      await service.revokeAllExcept(USER_ID, 'keep');
+      expect(prisma.$queryRaw).toHaveBeenCalledTimes(3);
+    });
+
+    it('a revoke that wins the lock first turns the rotation into a 401 and mints nothing', async () => {
+      // The pre-lock read still sees a live token; the read under the lock sees the revocation.
+      prisma.refreshToken.findUnique
+        .mockResolvedValueOnce({ userId: USER_ID })
+        .mockResolvedValueOnce({
+          id: 'row-1',
+          expiresAt: secondsAhead(1000),
+          rotatedAt: null,
+          revokedAt: secondsAgo(1),
+        });
+      await expect(service.rotate('presented-token', undefined)).rejects.toMatchObject({
+        code: 'UNAUTHENTICATED',
+      });
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Google sign-up parking', () => {
+    const identity = {
+      providerUserId: 'g-1',
+      email: 'parent@example.com',
+      emailVerified: true,
+      displayName: 'Parent',
+      locale: 'ru' as const,
+    };
+
+    it('stores the identity hashed-by-token, sweeps expired rows and returns an opaque token', async () => {
+      const token = await service.issueOAuthSignup(identity);
+      expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      expect(firstCallArg(prisma.oAuthSignup.deleteMany)).toEqual({
+        where: { expiresAt: { lt: NOW } },
+      });
+      const { data } = firstCallArg(prisma.oAuthSignup.create) as {
+        data: { tokenHash: string; expiresAt: Date; email: string };
+      };
+      expect(data.tokenHash).toBe(sha(token));
+      expect(data.email).toBe('parent@example.com');
+      expect(data.expiresAt).toEqual(secondsAhead(600));
+    });
+
+    const row = {
+      id: 's-1',
+      providerUserId: 'g-1',
+      email: 'parent@example.com',
+      emailVerified: true,
+      displayName: 'Parent',
+      locale: 'ru',
+      expiresAt: secondsAhead(100),
+    };
+
+    it('consume deletes the row in the same transaction as the effect', async () => {
+      prisma.oAuthSignup.findUnique.mockResolvedValue(row);
+      prisma.oAuthSignup.deleteMany.mockResolvedValue({ count: 1 });
+      const effect = jest.fn().mockResolvedValue('user-id');
+      await expect(service.consumeOAuthSignup('tok', effect)).resolves.toBe('user-id');
+      expect(effect).toHaveBeenCalledWith(
+        expect.objectContaining({ email: 'parent@example.com', locale: 'ru' }),
+        prisma,
+      );
+      expect(firstCallArg(prisma.oAuthSignup.deleteMany)).toEqual({ where: { id: 's-1' } });
+    });
+
+    it.each([
+      ['unknown', null],
+      ['expired', { ...row, expiresAt: secondsAgo(1) }],
+    ])('consume answers NOT_FOUND for a token that is %s', async (_name, found) => {
+      prisma.oAuthSignup.findUnique.mockResolvedValue(found);
+      const effect = jest.fn();
+      await expect(service.consumeOAuthSignup('tok', effect)).rejects.toMatchObject({
+        code: 'NOT_FOUND',
+      });
+      expect(effect).not.toHaveBeenCalled();
+    });
+
+    it('consume answers NOT_FOUND when a parallel request took the row first', async () => {
+      prisma.oAuthSignup.findUnique.mockResolvedValue(row);
+      prisma.oAuthSignup.deleteMany.mockResolvedValue({ count: 0 });
+      const effect = jest.fn();
+      await expect(service.consumeOAuthSignup('tok', effect)).rejects.toMatchObject({
         code: 'NOT_FOUND',
       });
       expect(effect).not.toHaveBeenCalled();

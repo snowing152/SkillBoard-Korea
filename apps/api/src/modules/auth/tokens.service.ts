@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { DEFAULT_LOCALE, type Locale, LocaleSchema } from '@skillboard/shared';
 import type { Env } from '../../common/config/env.js';
 import { ApiError } from '../../common/errors/api-error.js';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
@@ -15,6 +16,16 @@ const TOKEN_TTL_MS: Record<TokenPurpose, number> = {
 };
 
 const USER_AGENT_MAX = 200;
+const OAUTH_SIGNUP_TTL_MS = 10 * 60 * 1000;
+
+/** A Google identity as the callback saw it, parked until the person has chosen a role. */
+export type OAuthSignupIdentity = {
+  providerUserId: string;
+  email: string;
+  emailVerified: boolean;
+  displayName: string | null;
+  locale: Locale;
+};
 
 export type IssuedRefreshToken = { token: string; expiresAt: Date };
 
@@ -85,32 +96,50 @@ export class TokensService {
    */
   async rotate(presented: string, userAgent: string | undefined): Promise<RotatedRefreshToken> {
     const tokenHash = this.hash(presented);
-    const row = await this.prisma.refreshToken.findUnique({
+    const found = await this.prisma.refreshToken.findUnique({
       where: { tokenHash },
-      select: { id: true, userId: true, expiresAt: true, rotatedAt: true, revokedAt: true },
+      select: { userId: true },
     });
-    const now = this.now();
-    if (!row) throw new ApiError('UNAUTHENTICATED', 'Invalid or expired token');
-    if (row.revokedAt !== null || row.expiresAt.getTime() <= now.getTime()) {
+    if (!found) throw new ApiError('UNAUTHENTICATED', 'Invalid or expired token');
+
+    // The user row is locked for the whole decision, as it is in every revoke below, so "revoke all" and
+    // a rotation never interleave: either the revoke is first (this token is then revoked and gets a 401)
+    // or the rotation is first (and the revoke then sees the new token and ends it too).
+    const outcome = await this.prisma.$transaction(async (tx) => {
+      await this.lockUser(tx, found.userId);
+      const row = await tx.refreshToken.findUnique({
+        where: { tokenHash },
+        select: { id: true, expiresAt: true, rotatedAt: true, revokedAt: true },
+      });
+      const now = this.now();
+      if (!row) return 'invalid' as const;
+      if (row.revokedAt !== null || row.expiresAt.getTime() <= now.getTime()) {
+        return 'invalid' as const;
+      }
+      if (row.rotatedAt !== null) {
+        const graceMs = this.config.get('REFRESH_GRACE_SECONDS', { infer: true }) * 1000;
+        if (now.getTime() - row.rotatedAt.getTime() >= graceMs) {
+          await this.revokeAll(found.userId, tx);
+          return 'replay' as const; // the revocation must commit, so the 401 is thrown outside
+        }
+      } else {
+        await tx.refreshToken.updateMany({
+          where: { id: row.id, rotatedAt: null, revokedAt: null },
+          data: { rotatedAt: now },
+        });
+      }
+      return { next: await this.issueRefresh(found.userId, userAgent, tx) };
+    });
+
+    if (outcome === 'invalid' || outcome === 'replay') {
       throw new ApiError('UNAUTHENTICATED', 'Invalid or expired token');
     }
+    return { ...outcome.next, userId: found.userId };
+  }
 
-    if (row.rotatedAt !== null) {
-      const graceMs = this.config.get('REFRESH_GRACE_SECONDS', { infer: true }) * 1000;
-      if (now.getTime() - row.rotatedAt.getTime() >= graceMs) {
-        await this.revokeAll(row.userId);
-        throw new ApiError('UNAUTHENTICATED', 'Invalid or expired token');
-      }
-    } else {
-      // `rotatedAt: null` in the filter makes two simultaneous rotations safe: the loser updates zero
-      // rows and is handled like a concurrent refresh, which is what it is.
-      await this.prisma.refreshToken.updateMany({
-        where: { id: row.id, rotatedAt: null, revokedAt: null },
-        data: { rotatedAt: now },
-      });
-    }
-    const next = await this.issueRefresh(row.userId, userAgent);
-    return { ...next, userId: row.userId };
+  /** Row lock on the user: serialises the operations that decide which refresh tokens are alive. */
+  private async lockUser(tx: Prisma.TransactionClient, userId: string): Promise<void> {
+    await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId}::uuid FOR UPDATE`;
   }
 
   /**
@@ -124,13 +153,9 @@ export class TokensService {
     });
   }
 
-  /** Logout everywhere, password reset, theft response. */
+  /** Logout everywhere, password reset, theft response. Takes the user lock itself unless given a `tx`. */
   async revokeAll(userId: string, tx?: Prisma.TransactionClient): Promise<void> {
-    const db = tx ?? this.prisma;
-    await db.refreshToken.updateMany({
-      where: { userId, revokedAt: null },
-      data: { revokedAt: this.now() },
-    });
+    await this.revokeWhere(userId, undefined, tx);
   }
 
   /**
@@ -138,15 +163,28 @@ export class TokensService {
    * person stays signed in on this device and everyone else is signed out. An unknown or missing token
    * keeps nothing, which is the safe direction.
    */
-  async revokeAllExcept(userId: string, keepToken: string | undefined): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
-      where: {
-        userId,
-        revokedAt: null,
-        ...(keepToken ? { tokenHash: { not: this.hash(keepToken) } } : {}),
-      },
-      data: { revokedAt: this.now() },
-    });
+  async revokeAllExcept(
+    userId: string,
+    keepToken: string | undefined,
+    tx?: Prisma.TransactionClient,
+  ): Promise<void> {
+    await this.revokeWhere(userId, keepToken ? this.hash(keepToken) : undefined, tx);
+  }
+
+  private async revokeWhere(
+    userId: string,
+    keepHash: string | undefined,
+    tx: Prisma.TransactionClient | undefined,
+  ): Promise<void> {
+    const run = async (db: Prisma.TransactionClient) => {
+      await this.lockUser(db, userId);
+      await db.refreshToken.updateMany({
+        where: { userId, revokedAt: null, ...(keepHash ? { tokenHash: { not: keepHash } } : {}) },
+        data: { revokedAt: this.now() },
+      });
+    };
+    if (tx) await run(tx);
+    else await this.prisma.$transaction(run);
   }
 
   // ---- one-time tokens ------------------------------------------------------------------------
@@ -204,4 +242,67 @@ export class TokensService {
       return effect(row.userId, tx);
     });
   }
+
+  // ---- Google sign-up step -------------------------------------------------------------------
+
+  /**
+   * Parks a Google identity until its owner chooses a role. Returns an opaque token for the URL: the
+   * identity itself (email, name) stays in the database and never travels in a link or a log. Expired
+   * rows are swept here, so personal data lives at most ten minutes beyond its use.
+   */
+  async issueOAuthSignup(identity: OAuthSignupIdentity): Promise<string> {
+    const token = this.generate();
+    const now = this.now();
+    await this.prisma.$transaction([
+      this.prisma.oAuthSignup.deleteMany({ where: { expiresAt: { lt: now } } }),
+      this.prisma.oAuthSignup.create({
+        data: {
+          tokenHash: this.hash(token),
+          provider: 'GOOGLE',
+          providerUserId: identity.providerUserId,
+          email: identity.email,
+          emailVerified: identity.emailVerified,
+          displayName: identity.displayName,
+          locale: identity.locale,
+          expiresAt: new Date(now.getTime() + OAUTH_SIGNUP_TTL_MS),
+        },
+      }),
+    ]);
+    return token;
+  }
+
+  /**
+   * Single use: the row is deleted in the same transaction as `effect` (the account creation), so a
+   * failed creation leaves the token usable and a successful one cannot be repeated.
+   */
+  async consumeOAuthSignup<T>(
+    token: string,
+    effect: (identity: OAuthSignupIdentity, tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    const tokenHash = this.hash(token);
+    const now = this.now();
+    return this.prisma.$transaction(async (tx) => {
+      const row = await tx.oAuthSignup.findUnique({ where: { tokenHash } });
+      if (!row) throw new ApiError('NOT_FOUND', 'Token not found or expired');
+      if (row.expiresAt.getTime() <= now.getTime()) {
+        throw new ApiError('NOT_FOUND', 'Token not found or expired');
+      }
+      const claimed = await tx.oAuthSignup.deleteMany({ where: { id: row.id } });
+      if (claimed.count === 0) throw new ApiError('NOT_FOUND', 'Token not found or expired');
+      return effect(
+        {
+          providerUserId: row.providerUserId,
+          email: row.email,
+          emailVerified: row.emailVerified,
+          displayName: row.displayName,
+          locale: toLocale(row.locale),
+        },
+        tx,
+      );
+    });
+  }
+}
+
+function toLocale(value: string): Locale {
+  return LocaleSchema.catch(DEFAULT_LOCALE).parse(value);
 }

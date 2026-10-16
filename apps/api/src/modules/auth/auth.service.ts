@@ -28,13 +28,7 @@ import { passwordResetMail, verifyEmailMail } from '../../common/mail/templates.
 import { PrismaService } from '../../common/prisma/prisma.service.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { ConsentsService } from '../consents/consents.service.js';
-import {
-  type GoogleProfile,
-  type OAuthSignup,
-  OAuthSignupSchema,
-  type OAuthState,
-  OAuthStateSchema,
-} from './google-profile.js';
+import { type GoogleProfile, type OAuthState, OAuthStateSchema } from './google-profile.js';
 import { TokensService } from './tokens.service.js';
 
 /**
@@ -222,6 +216,7 @@ export class AuthService {
       ...(query.role ? { role: query.role } : {}),
       locale: query.locale,
       ...(query.next ? { next: query.next } : {}),
+      ...(query.webNonce ? { webNonce: query.webNonce } : {}),
       nonce,
     };
     return { state: await this.jwt.signAsync(payload, { expiresIn: STATE_TTL }), nonce };
@@ -300,19 +295,18 @@ export class AuthService {
         outcome = 'created';
       } else {
         // Started on /sign-in: nobody chose a role or accepted the terms, so nothing is created yet.
-        const signup: OAuthSignup = {
-          purpose: 'oauth_signup',
-          googleId: profile.id,
-          email,
-          emailVerified: profile.emailVerified,
-          displayName: profile.displayName,
-          locale: state.locale,
-        };
         this.logger.log('google outcome=needs_role');
         return {
           ok: true,
           kind: 'signup',
-          signupToken: await this.jwt.signAsync(signup, { expiresIn: STATE_TTL }),
+          // Opaque: the identity stays in the database, only this random token goes into the redirect URL.
+          signupToken: await this.tokens.issueOAuthSignup({
+            providerUserId: profile.id,
+            email,
+            emailVerified: profile.emailVerified,
+            displayName: profile.displayName,
+            locale: state.locale,
+          }),
         };
       }
     }
@@ -330,13 +324,14 @@ export class AuthService {
     email: string,
     role: SignupRole,
     locale: Locale,
+    outer?: Prisma.TransactionClient,
   ): Promise<string> {
     const fallbackName = email.split('@')[0] ?? 'User';
     const given = profile.displayName?.trim() ?? '';
     const displayName = (given.length > 0 ? given : fallbackName)
       .padEnd(2, '_')
       .slice(0, DISPLAY_NAME_MAX);
-    return this.prisma.$transaction(async (tx) => {
+    const create = async (tx: Prisma.TransactionClient): Promise<string> => {
       const created = await tx.user.create({
         data: {
           email,
@@ -351,33 +346,48 @@ export class AuthService {
       });
       await this.consents.record(created.id, SIGNUP_CONSENT_DOCUMENTS, locale, tx);
       return created.id;
-    });
+    };
+    return outer ? create(outer) : this.prisma.$transaction(create);
+  }
+
+  /**
+   * Query parameters of the redirect to the web app's `/auth/callback`. `n` echoes the web app's own
+   * nonce: the web callback only accepts a `code` or `signup` token when `n` matches the cookie of the
+   * browser that started the flow there, which is what stops a link made by someone else (login CSRF).
+   */
+  googleRedirectParams(outcome: GoogleOutcome, state: OAuthState): Record<string, string> {
+    const extra = {
+      ...(state.next ? { next: state.next } : {}),
+      ...(state.webNonce ? { n: state.webNonce } : {}),
+    };
+    if (!outcome.ok) return { error: outcome.error, ...extra };
+    return outcome.kind === 'code'
+      ? { code: outcome.code, ...extra }
+      : { signup: outcome.signupToken, ...extra };
   }
 
   /**
    * The role-choice step: the person picked a role and accepted the terms for the Google identity the
-   * signed token names. Only creates; an identity or email that already exists is a CONFLICT, so the
+   * parked token names. Only creates; an identity or email that already exists is a CONFLICT, so the
    * token can never be used to sign in to somebody's account.
    */
   async completeGoogleSignup(input: GoogleComplete, userAgent?: string): Promise<AuthSession> {
-    let signup: OAuthSignup;
-    try {
-      signup = OAuthSignupSchema.parse(await this.jwt.verifyAsync(input.signupToken));
-    } catch {
-      throw new ApiError('NOT_FOUND', 'Token not found or expired');
-    }
     let userId: string;
     try {
-      userId = await this.createGoogleUser(
-        {
-          id: signup.googleId,
-          email: signup.email,
-          emailVerified: signup.emailVerified,
-          displayName: signup.displayName,
-        },
-        signup.email,
-        input.role,
-        input.locale,
+      // The parked identity is deleted in the same transaction that creates the account.
+      userId = await this.tokens.consumeOAuthSignup(input.signupToken, (identity, tx) =>
+        this.createGoogleUser(
+          {
+            id: identity.providerUserId,
+            email: identity.email,
+            emailVerified: identity.emailVerified,
+            displayName: identity.displayName,
+          },
+          identity.email,
+          input.role,
+          input.locale,
+          tx,
+        ),
       );
     } catch (err: unknown) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -434,9 +444,12 @@ export class AuthService {
       throw new ApiError('FORBIDDEN', 'Current password is wrong', undefined, 'WRONG_PASSWORD');
     }
     const passwordHash = await hash(input.newPassword, { type: argon2id });
-    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
-    // Other devices may be in a thief's hands: sign them out, keep the one that just proved the old password.
-    await this.tokens.revokeAllExcept(userId, input.refreshToken);
+    // One transaction: a changed password with other sessions left alive must not be possible.
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: userId }, data: { passwordHash } });
+      // Other devices may be in a thief's hands: sign them out, keep the one that just proved the old password.
+      await this.tokens.revokeAllExcept(userId, input.refreshToken, tx);
+    });
     this.logger.log(`change-password userId=${userId} outcome=changed`);
   }
 

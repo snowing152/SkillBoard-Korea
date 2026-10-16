@@ -27,21 +27,33 @@ and the accounts spec:
 - **Password change** (`POST /v1/me/password`) revokes every refresh token except the one named in the
   optional `refreshToken` field (the web sends its cookie value); without it, all are revoked. A password
   reset revokes all and also sets `emailVerifiedAt` (opening the emailed link proves the inbox).
-- **Google state is bound to the browser**: `GET /v1/auth/google` sets an `HttpOnly`, `SameSite=Lax` cookie
-  `skillboard_oauth_nonce` on the API origin, path `/v1/auth/google`, 10 minutes; the `state` JWT carries the
-  same nonce and the callback accepts the flow only if both match, then clears the cookie.
+- **Rotation and revocation are serialised**: `rotate`, `revokeAll` and `revokeAllExcept` run in a
+  transaction that first locks the user row (`FOR UPDATE`), so "sign out everywhere" and a concurrent
+  refresh never interleave: a rotation that loses the race finds its token revoked (401), one that wins is
+  followed by a revoke that also ends the token it just issued.
+- **Google flow is bound to the browser on both legs** (login CSRF). Leg 1, API: `GET /v1/auth/google`
+  sets an `HttpOnly`, `SameSite=Lax` cookie `skillboard_oauth_nonce` (API origin, path `/v1/auth/google`,
+  10 minutes) and the callback accepts the flow only if the `state` nonce matches it. Leg 2, web: the
+  "Continue with Google" links point at the web route `/[locale]/auth/google`, which puts a random
+  `webNonce` into an `HttpOnly` web cookie `skillboard_google_nonce` and passes it through `state`; the API
+  echoes it as `n` in the final redirect, and `/auth/callback` refuses a `code` or `signup` token unless
+  `n` equals the cookie (then deletes it). A callback URL built in the attacker's browser carries the
+  attacker's `n`, which the victim's browser has no cookie for.
 - **Google role step**: `role` and `acceptTerms` are optional, together, on the start query. Without them
-  (sign-in page) an unknown Google user gets nothing created; the callback redirects to the web app with a
-  signed 10-minute `signup` token, which the web server keeps in an `HttpOnly` cookie and redirects to
-  `/sign-up/google`. There the person picks a role and accepts the terms; `POST /v1/auth/google/complete`
-  creates the account and returns a session. The endpoint only creates: an existing identity or email is
-  `CONFLICT`, so the token cannot be used to sign in to an account.
+  (sign-in page) an unknown Google user gets nothing created; the identity is parked in the
+  `OAuthSignup` table (10 minutes, deleted on use, expired rows swept on every insert) and the callback
+  redirects to the web app with an opaque random `signup` token, so no email or name appears in a URL or a
+  log. The web server keeps the token in an `HttpOnly` cookie and redirects to `/sign-up/google`. There the person picks a role and accepts the terms; `POST /v1/auth/google/complete`
+  creates the account and returns a session. The endpoint only creates and the token is single use: an existing identity or
+  email is `CONFLICT`, a used or expired token `NOT_FOUND`, so it can never sign in to an account.
+- `POST /v1/me/password` is throttled to 10 per minute per IP, and the new hash and the revocation of the
+  other sessions commit in one transaction.
 - Korean UI strings use 해요체, legal texts 합니다체 (`.claude/rules/i18n-messages.md`).
 
 ## Consequences
 
-One new column and one new endpoint. A device that was signed out by a password change gets a plain 401 and
+One new column (`RefreshToken.rotatedAt`, no backfill: tokens rotated before the migration count as
+revoked, which is harmless before launch), one new table (`OAuthSignup`) and one new endpoint. A device that was signed out by a password change gets a plain 401 and
 leaves the other sessions alone. The nonce cookie needs the browser to send a first-party-style cookie on a
-top-level redirect back to the API: `SameSite=Lax` allows it. The signup token appears once in a redirect URL
-between API and web server (as the 60 s exchange code already does) and is not a credential for any existing
-account.
+top-level redirect back to the API: `SameSite=Lax` allows it. The opaque signup token appears once in a redirect URL between API and web
+server (as the 60 s exchange code already does) and is not a credential for any existing account.

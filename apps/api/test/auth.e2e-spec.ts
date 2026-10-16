@@ -416,11 +416,11 @@ describe('auth and accounts (e2e)', () => {
       pendingConsents: [],
     });
 
-    // The token cannot be replayed to get into the account it created.
+    // Single use: the parked identity is gone, so the token cannot be replayed at all.
     await request(server)
       .post('/v1/auth/google/complete')
       .send({ ...body, acceptTerms: true })
-      .expect(409);
+      .expect(404);
     await request(server)
       .post('/v1/auth/google/complete')
       .send({ ...body, signupToken: 'x'.repeat(40), acceptTerms: true })

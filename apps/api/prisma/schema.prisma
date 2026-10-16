@@ -136,6 +136,23 @@ model VerificationToken {
   createdAt DateTime     @default(now())
 }
 
+// A Google identity waiting for its owner to choose a role (accounts spec, ADR 0024). Holds personal
+// data for at most 10 minutes: deleted when used, and expired rows are swept on every insert.
+model OAuthSignup {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  tokenHash      String       @unique
+  provider       AuthProvider
+  providerUserId String
+  email          String
+  emailVerified  Boolean
+  displayName    String?
+  locale         String       @default("en")
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+
+  @@index([expiresAt])
+}
+
 model Consent {
   id         String      @id @default(uuid(7)) @db.Uuid
   userId     String      @db.Uuid

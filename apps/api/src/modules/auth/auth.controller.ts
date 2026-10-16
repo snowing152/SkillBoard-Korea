@@ -153,13 +153,9 @@ export class AuthController {
     const outcome = await this.auth
       .completeGoogle(req.oauthProfile, verified)
       .catch((): GoogleOutcome => ({ ok: false, error: 'OAUTH_FAILED' }));
-    const next = verified.next ? { next: verified.next } : {};
-    const params = !outcome.ok
-      ? { error: outcome.error }
-      : outcome.kind === 'code'
-        ? { code: outcome.code, ...next }
-        : { signup: outcome.signupToken, ...next };
-    res.redirect(this.auth.oauthRedirectUrl(locale, params));
+    res.redirect(
+      this.auth.oauthRedirectUrl(locale, this.auth.googleRedirectParams(outcome, verified)),
+    );
   }
 
   @Post('google/complete')

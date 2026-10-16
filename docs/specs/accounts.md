@@ -96,8 +96,8 @@ next, nonce }`, 10 min, `JWT_ACCESS_SECRET`; the access guard rejects it because
   `${WEB_URL}/${locale}/auth/callback?code=…&next=…`. Nothing secret is ever in a URL except that
   single-use 60 s code. Amended by ADR 0024: the start route also sets an `HttpOnly` nonce cookie that the
   callback must match with the `state` nonce (login CSRF); when the query has no `role`/`acceptTerms`
-  (sign-in page) and nobody exists yet, nothing is created: the callback redirects with a signed 10 minute
-  `signup=…` token instead of `code`, the web keeps it in an `HttpOnly` cookie, and `/sign-up/google` asks
+  (sign-in page) and nobody exists yet, nothing is created: the callback redirects with a opaque single-use
+  `signup=…` token instead of `code` (the identity is parked in `OAuthSignup`), the web keeps it in an `HttpOnly` cookie, and `/sign-up/google` asks
   for role and consent before `POST /v1/auth/google/complete` creates the account.
 - `login` of an unverified user succeeds (they must be able to reach "resend"); gated actions check
   `emailVerifiedAt` themselves (`contact-reveal`, `moderation`). A profile can be created, edited and

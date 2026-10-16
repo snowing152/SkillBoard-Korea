@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { GoogleLink, OrDivider } from '@/components/auth/google-button';
-import { googleStartUrl } from '@/components/auth/google-url';
+import { googleStartPath } from '@/components/auth/google-url';
 import { SignInForm } from '@/components/auth/sign-in-form';
 import { PageContainer, PageHeader } from '@/components/ds/page';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -43,7 +43,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Searc
         {googleEnabled && (
           <>
             <OrDivider />
-            <GoogleLink href={googleStartUrl(env.NEXT_PUBLIC_API_URL, { locale, next })} />
+            <GoogleLink href={googleStartPath({ locale, next })} />
           </>
         )}
       </div>

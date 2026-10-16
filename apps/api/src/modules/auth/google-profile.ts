@@ -23,20 +23,7 @@ export const OAuthStateSchema = z.object({
   next: SafePathSchema.optional(),
   /** Also stored in an httpOnly cookie on the API origin; the callback needs both to match. */
   nonce: z.string().min(1),
+  /** Chosen by the web app's start route and echoed back in the final redirect (see the web callback). */
+  webNonce: z.string().optional(),
 });
 export type OAuthState = z.infer<typeof OAuthStateSchema>;
-
-/**
- * What the role-choice step needs to create the account later: the Google identity as the callback saw
- * it. Signed, short-lived, no `sub` (the access guard rejects it), and it travels from the API to the
- * web server only, then sits in an httpOnly cookie there.
- */
-export const OAuthSignupSchema = z.object({
-  purpose: z.literal('oauth_signup'),
-  googleId: z.string().min(1),
-  email: z.string().min(3),
-  emailVerified: z.boolean(),
-  displayName: z.string().nullable(),
-  locale: LocaleSchema,
-});
-export type OAuthSignup = z.infer<typeof OAuthSignupSchema>;

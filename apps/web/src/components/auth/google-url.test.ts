@@ -1,25 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { googleStartUrl } from './google-url';
+import { googleStartPath } from './google-url';
 
-describe('googleStartUrl', () => {
-  it('builds the API start URL with role, locale and the consent flag', () => {
-    expect(googleStartUrl('http://localhost:3001', { role: 'CLIENT', locale: 'ko' })).toBe(
-      'http://localhost:3001/v1/auth/google?locale=ko&role=CLIENT&acceptTerms=true',
-    );
+describe('googleStartPath', () => {
+  it('points at the web start route, with the locale prefix for non-default languages', () => {
+    expect(googleStartPath({ locale: 'en' })).toBe('/auth/google');
+    expect(googleStartPath({ locale: 'ko' })).toBe('/ko/auth/google');
   });
 
-  it('sends neither role nor consent from the sign-in page', () => {
-    expect(googleStartUrl('http://localhost:3001', { locale: 'en' })).toBe(
-      'http://localhost:3001/v1/auth/google?locale=en',
+  it('sends role and consent together, only from the sign-up page', () => {
+    expect(googleStartPath({ role: 'CLIENT', locale: 'ru' })).toBe(
+      '/ru/auth/google?role=CLIENT&acceptTerms=true',
     );
+    expect(googleStartPath({ locale: 'en', next: '/talents' })).not.toContain('role');
   });
 
   it('encodes the next path', () => {
-    const url = googleStartUrl('https://api.example', {
-      role: 'TALENT',
-      locale: 'en',
-      next: '/talents?limit=10',
-    });
-    expect(url).toContain('next=%2Ftalents%3Flimit%3D10');
+    expect(googleStartPath({ locale: 'en', next: '/talents?limit=10' })).toContain(
+      'next=%2Ftalents%3Flimit%3D10',
+    );
   });
 });

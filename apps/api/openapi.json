@@ -270,6 +270,15 @@
               "pattern": "^\\/(?![/\\\\])\\S*$",
               "type": "string"
             }
+          },
+          {
+            "name": "webNonce",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{16,64}$",
+              "type": "string"
+            }
           }
         ],
         "responses": {

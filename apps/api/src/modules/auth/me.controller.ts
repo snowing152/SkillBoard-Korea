@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiNoContentResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import type { AuthUser } from '@skillboard/shared';
 import { ZodSerializerDto } from 'nestjs-zod';
@@ -30,7 +31,9 @@ export class MeController {
     return this.auth.updateMe(user.id, body);
   }
 
+  // A stolen access token must not be able to guess `currentPassword` at the global 100 per minute.
   @Post('password')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiNoContentResponse({ description: 'Password changed' })
   changePassword(

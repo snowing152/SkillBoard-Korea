@@ -1254,6 +1254,7 @@ export interface operations {
         locale: 'en' | 'ko' | 'ru';
         acceptTerms?: 'true';
         next?: string;
+        webNonce?: string;
       };
       header?: never;
       path?: never;

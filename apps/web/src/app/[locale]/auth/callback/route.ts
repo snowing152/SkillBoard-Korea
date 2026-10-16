@@ -7,6 +7,7 @@ import { defaultLandingPath } from '@/lib/auth-forms';
 import { safeNextPath } from '@/lib/safe-path';
 import {
   cookieOptions,
+  GOOGLE_NONCE_COOKIE,
   GOOGLE_SIGNUP_COOKIE,
   GOOGLE_SIGNUP_MAX_AGE_SECONDS,
   REFRESH_COOKIE,
@@ -33,6 +34,17 @@ export async function GET(request: NextRequest, { params }: Params) {
   const code = search.get('code');
   const signup = search.get('signup');
 
+  // A `code` or `signup` token is only honoured in the browser that started the flow here: the nonce in
+  // the URL must equal the one in this browser's cookie (login CSRF, ADR 0024). The cookie is one-shot.
+  const nonceCookie = request.cookies.get(GOOGLE_NONCE_COOKIE)?.value;
+  const nonceMatches = nonceCookie !== undefined && nonceCookie === search.get('n');
+  const failed = () => {
+    const response = go('/sign-in?error=OAUTH_FAILED');
+    response.cookies.delete(GOOGLE_NONCE_COOKIE);
+    return response;
+  };
+  if ((code !== null || signup !== null) && !nonceMatches) return failed();
+
   // A Google user without an account: the API created nothing and handed over a signed token. It goes
   // into an httpOnly cookie (never into browser JavaScript or the page URL) for the role-choice step.
   if (error === null && code === null && signup !== null && signup.length <= 4000) {
@@ -41,6 +53,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     const response = go(
       safe ? `/sign-up/google?next=${encodeURIComponent(safe)}` : '/sign-up/google',
     );
+    response.cookies.delete(GOOGLE_NONCE_COOKIE);
     response.cookies.set(
       GOOGLE_SIGNUP_COOKIE,
       signup,
@@ -72,6 +85,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     sessionTarget(session.user.pendingConsents.length, search.get('next'), session.user.roles),
     session.user.locale,
   );
+  response.cookies.delete(GOOGLE_NONCE_COOKIE);
   // Set on the redirect itself (not through `cookies()`), so the response that sends the browser on
   // is the one that carries the session.
   response.cookies.set(

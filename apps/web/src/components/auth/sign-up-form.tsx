@@ -7,7 +7,7 @@ import { useState, useTransition } from 'react';
 import { type Resolver, useForm, useWatch } from 'react-hook-form';
 import { signUp } from '@/actions/auth';
 import { FieldMessage, TextField } from '@/components/auth/auth-fields';
-import { googleStartUrl } from '@/components/auth/google-url';
+import { googleStartPath } from '@/components/auth/google-url';
 import { OrDivider } from '@/components/auth/google-button';
 import { RoleCards } from '@/components/auth/role-cards';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -24,11 +24,11 @@ import { type ActionFailure, errorMessageKey } from '@/lib/api-errors';
 type SignUpValues = Omit<Register, 'acceptTerms' | 'locale'> & { acceptTerms: boolean };
 
 type Props = {
-  /** `<API origin>`; null when Google sign-in is switched off. */
-  googleBase: string | null;
+  /** Whether the Google button is shown (`NEXT_PUBLIC_GOOGLE_AUTH_ENABLED`). */
+  googleEnabled: boolean;
 };
 
-export function SignUpForm({ googleBase }: Props) {
+export function SignUpForm({ googleEnabled }: Props) {
   const t = useTranslations('auth.signUp');
   const tCommon = useTranslations('common');
   const tAuth = useTranslations('auth');
@@ -69,7 +69,7 @@ export function SignUpForm({ googleBase }: Props) {
   const onGoogle = async () => {
     // The box must be ticked before anything leaves the page: it is the consent for a new account.
     if (!(await trigger('acceptTerms'))) return;
-    if (googleBase) window.location.assign(googleStartUrl(googleBase, { role, locale }));
+    if (googleEnabled) window.location.assign(googleStartPath({ role, locale }));
   };
 
   return (
@@ -139,7 +139,7 @@ export function SignUpForm({ googleBase }: Props) {
         {t('submit')}
       </Button>
 
-      {googleBase && (
+      {googleEnabled && (
         <>
           <OrDivider />
           <Button type="button" variant="outline" size="lg" className="w-full" onClick={onGoogle}>

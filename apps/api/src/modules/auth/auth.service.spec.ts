@@ -39,6 +39,8 @@ describe('AuthService', () => {
     revoke: jest.fn(),
     revokeAll: jest.fn(),
     revokeAllExcept: jest.fn(),
+    issueOAuthSignup: jest.fn(),
+    consumeOAuthSignup: jest.fn(),
     consumeOneTime: jest.fn(),
   };
   const mail = { send: jest.fn() };
@@ -57,6 +59,7 @@ describe('AuthService', () => {
 
   beforeEach(async () => {
     consents.pendingFor.mockResolvedValue([]);
+    tokens.issueOAuthSignup.mockResolvedValue('opaque-signup-token');
     tokens.issueRefresh.mockResolvedValue({
       token: 'r'.repeat(43),
       expiresAt: new Date('2026-11-14T00:00:00Z'),
@@ -316,7 +319,7 @@ describe('AuthService', () => {
       });
       expect(prisma.user.update).toHaveBeenCalledTimes(1);
       // Every other session is signed out; the caller's own refresh token is the one kept.
-      expect(tokens.revokeAllExcept).toHaveBeenCalledWith(USER_ID, 'k'.repeat(43));
+      expect(tokens.revokeAllExcept).toHaveBeenCalledWith(USER_ID, 'k'.repeat(43), prisma);
     });
   });
 
@@ -443,10 +446,19 @@ describe('AuthService', () => {
         locale: 'ru',
         nonce: 'n',
       });
-      expect(outcome).toMatchObject({ ok: true, kind: 'signup' });
+      expect(outcome).toEqual({ ok: true, kind: 'signup', signupToken: 'opaque-signup-token' });
+      expect(tokens.issueOAuthSignup).toHaveBeenCalledWith(
+        expect.objectContaining({
+          providerUserId: 'g-1',
+          email: 'parent@example.com',
+          locale: 'ru',
+        }),
+      );
       expect(prisma.user.create).not.toHaveBeenCalled();
       expect(consents.record).not.toHaveBeenCalled();
       expect(tokens.issueOneTime).not.toHaveBeenCalled();
+      // The identity is parked in the database: neither the email nor the name is in the token.
+      expect(JSON.stringify(outcome)).not.toContain('example.com');
     });
 
     it('still signs in a known Google identity that started on the sign-in page', async () => {
@@ -459,19 +471,25 @@ describe('AuthService', () => {
       expect(outcome).toMatchObject({ ok: true, kind: 'code' });
     });
 
-    it('role step: creates the chosen role with both consents from the signed token', async () => {
-      prisma.authIdentity.findUnique.mockResolvedValue(null);
-      prisma.user.findUnique.mockResolvedValueOnce(null).mockResolvedValue(row);
-      const outcome = await service.completeGoogle(google, {
-        purpose: 'oauth_state',
-        locale: 'ru',
-        nonce: 'n',
-      });
-      if (!outcome.ok || outcome.kind !== 'signup') throw new Error('expected signup');
+    it('role step: creates the chosen role with both consents from the parked identity', async () => {
+      tokens.consumeOAuthSignup.mockImplementation(
+        (_token: string, effect: (identity: unknown, tx: unknown) => Promise<string>) =>
+          effect(
+            {
+              providerUserId: 'g-1',
+              email: 'parent@example.com',
+              emailVerified: true,
+              displayName: 'Parent',
+              locale: 'en',
+            },
+            prisma,
+          ),
+      );
       prisma.user.create.mockResolvedValue({ id: USER_ID });
+      prisma.user.findUnique.mockResolvedValue(row);
 
       const session = await service.completeGoogleSignup({
-        signupToken: outcome.signupToken,
+        signupToken: 'opaque-signup-token-value',
         role: 'TALENT',
         locale: 'ko',
         acceptTerms: true,
@@ -490,30 +508,52 @@ describe('AuthService', () => {
       expect(consents.record).toHaveBeenCalledWith(USER_ID, ['TERMS', 'PRIVACY'], 'ko', prisma);
     });
 
-    it('role step: a forged, expired or foreign token is NOT_FOUND, an existing account CONFLICT', async () => {
-      const bad = { role: 'CLIENT' as const, locale: 'en' as const, acceptTerms: true as const };
-      await expect(
-        service.completeGoogleSignup({ ...bad, signupToken: 'x'.repeat(40) }),
-      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
-      const access = await jwt.signAsync({ sub: USER_ID, roles: ['ADMIN'] });
-      await expect(
-        service.completeGoogleSignup({ ...bad, signupToken: access }),
-      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
-
-      const signupToken = await jwt.signAsync({
-        purpose: 'oauth_signup',
-        googleId: 'g-1',
-        email: 'parent@example.com',
-        emailVerified: true,
-        displayName: 'Parent',
-        locale: 'en',
+    it('role step: an unknown token is NOT_FOUND and an existing account is CONFLICT', async () => {
+      const input = {
+        signupToken: 'opaque-signup-token-value',
+        role: 'CLIENT' as const,
+        locale: 'en' as const,
+        acceptTerms: true as const,
+      };
+      tokens.consumeOAuthSignup.mockRejectedValueOnce(new ApiError('NOT_FOUND', 'x'));
+      await expect(service.completeGoogleSignup(input)).rejects.toMatchObject({
+        code: 'NOT_FOUND',
       });
-      prisma.user.create.mockRejectedValue(
+
+      tokens.consumeOAuthSignup.mockRejectedValueOnce(
         new Prisma.PrismaClientKnownRequestError('dup', { code: 'P2002', clientVersion: 'test' }),
       );
-      await expect(service.completeGoogleSignup({ ...bad, signupToken })).rejects.toMatchObject({
+      await expect(service.completeGoogleSignup(input)).rejects.toMatchObject({
         code: 'CONFLICT',
       });
+    });
+
+    it('redirect parameters echo the web nonce and keep next, for every outcome', () => {
+      const state = {
+        purpose: 'oauth_state' as const,
+        locale: 'en' as const,
+        nonce: 'n',
+        next: '/talents',
+        webNonce: 'w'.repeat(22),
+      };
+      const n = 'w'.repeat(22);
+      expect(service.googleRedirectParams({ ok: true, kind: 'code', code: 'c' }, state)).toEqual({
+        code: 'c',
+        next: '/talents',
+        n,
+      });
+      expect(
+        service.googleRedirectParams({ ok: true, kind: 'signup', signupToken: 's' }, state),
+      ).toEqual({ signup: 's', next: '/talents', n });
+      expect(
+        service.googleRedirectParams({ ok: false, error: 'EMAIL_NOT_VERIFIED' }, state),
+      ).toEqual({ error: 'EMAIL_NOT_VERIFIED', next: '/talents', n });
+      expect(
+        service.googleRedirectParams(
+          { ok: true, kind: 'code', code: 'c' },
+          { purpose: 'oauth_state', locale: 'en', nonce: 'n' },
+        ),
+      ).toEqual({ code: 'c' });
     });
 
     it('exchange spends the code and starts a session', async () => {
