@@ -2,7 +2,15 @@ import type { Locale } from '@skillboard/shared';
 import type { Messages } from 'next-intl';
 
 /** One JSON file per namespace in messages/<locale>/. Add a namespace here and in src/global.d.ts. */
-export const NAMESPACES = ['common', 'home', 'auth', 'profile', 'reference', 'legal'] as const;
+export const NAMESPACES = [
+  'common',
+  'home',
+  'auth',
+  'account',
+  'profile',
+  'reference',
+  'legal',
+] as const;
 export type Namespace = (typeof NAMESPACES)[number];
 
 export async function loadMessages(locale: Locale): Promise<Messages> {

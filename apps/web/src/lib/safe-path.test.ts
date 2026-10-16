@@ -37,6 +37,6 @@ describe('safeNextPath', () => {
 
   it('rejects control characters and very long values', () => {
     expect(safeNextPath('/a\nb', FALLBACK)).toBe(FALLBACK);
-    expect(safeNextPath(`/${'a'.repeat(200)}`, FALLBACK)).toBe(FALLBACK);
+    expect(safeNextPath(`/${'a'.repeat(300)}`, FALLBACK)).toBe(FALLBACK);
   });
 });

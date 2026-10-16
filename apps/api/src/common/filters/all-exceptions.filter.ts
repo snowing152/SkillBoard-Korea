@@ -29,7 +29,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const { status, body } = this.toResponse(exception, requestId);
     if (status >= 500) {
       this.logger.error(
-        `${req.method} ${req.url} -> ${status} [${requestId}]`,
+        // `path`, not `url`: the query string can hold an OAuth code or a state token (rule 11).
+        `${req.method} ${req.path} -> ${status} [${requestId}]`,
         exception instanceof Error ? exception.stack : String(exception),
       );
     }

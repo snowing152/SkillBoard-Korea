@@ -52,10 +52,15 @@ const profileSelect = {
 } satisfies Prisma.TalentProfileSelect;
 type ProfileRow = Prisma.TalentProfileGetPayload<{ select: typeof profileSelect }>;
 
-/** The visibility rule from docs/domain.md, written once. */
+/**
+ * The visibility rule from docs/domain.md, written once: published, not hidden by an admin, and the
+ * owner's email is verified (accounts spec). Verifying the email makes a published profile live with
+ * no further action. The search spec moves this to `common/prisma/visibility.ts` and adds deletion.
+ */
 const PUBLICLY_VISIBLE = {
   status: 'PUBLISHED',
   hiddenAt: null,
+  user: { emailVerifiedAt: { not: null } },
 } satisfies Prisma.TalentProfileWhereInput;
 
 const SLUG_ATTEMPTS = 5;

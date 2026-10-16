@@ -52,6 +52,214 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/auth/refresh': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['AuthController_refresh'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/auth/logout': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['AuthController_logout'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/auth/verify-email/request': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['AuthController_requestVerification'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/auth/verify-email/confirm': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['AuthController_confirmVerification'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/auth/password-reset/request': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['AuthController_requestReset'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/auth/password-reset/confirm': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['AuthController_confirmReset'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/auth/google': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['AuthController_googleStart'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/auth/google/callback': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['AuthController_googleCallback'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/auth/google/complete': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['AuthController_completeGoogle'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/auth/google/link': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['AuthController_linkGoogle'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/auth/exchange': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['AuthController_exchange'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['MeController_me'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations['MeController_update'];
+    trace?: never;
+  };
+  '/v1/me/password': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['MeController_changePassword'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/me/consents': {
     parameters: {
       query?: never;
@@ -154,11 +362,22 @@ export interface components {
       displayName: string;
       /** @enum {string} */
       role: 'TALENT' | 'CLIENT';
+      /**
+       * @default en
+       * @enum {string}
+       */
+      locale: 'en' | 'ko' | 'ru';
+      /** @enum {boolean} */
+      acceptTerms: true;
     };
     AuthSessionDto: {
       /** @description JWT; send as Authorization: Bearer */
       accessToken: string;
       expiresInSeconds: number;
+      /** @description Opaque; rotated on every POST /v1/auth/refresh */
+      refreshToken: string;
+      /** Format: date-time */
+      refreshExpiresAt: string;
       user: {
         /** Format: uuid */
         id: string;
@@ -168,6 +387,9 @@ export interface components {
         roles: ('TALENT' | 'CLIENT' | 'ADMIN')[];
         /** @enum {string} */
         locale: 'en' | 'ko' | 'ru';
+        emailVerified: boolean;
+        /** @description False for Google-only accounts: they set a password via a reset email */
+        hasPassword: boolean;
         /** @description Documents to accept at their current version before using the account */
         pendingConsents: ('TERMS' | 'PRIVACY' | 'VISA_DISCLAIMER')[];
       };
@@ -175,6 +397,65 @@ export interface components {
     LoginDto: {
       email: string;
       password: string;
+    };
+    RefreshDto: {
+      refreshToken: string;
+    };
+    LogoutDto: {
+      refreshToken?: string;
+      /** @default false */
+      all: boolean;
+    };
+    TokenDto: {
+      token: string;
+    };
+    PasswordResetRequestDto: {
+      email: string;
+    };
+    PasswordResetConfirmDto: {
+      token: string;
+      password: string;
+    };
+    GoogleCompleteDto: {
+      signupToken: string;
+      /** @enum {string} */
+      role: 'TALENT' | 'CLIENT';
+      /** @enum {string} */
+      locale: 'en' | 'ko' | 'ru';
+      /** @enum {boolean} */
+      acceptTerms: true;
+    };
+    GoogleLinkDto: {
+      linkToken: string;
+    };
+    ExchangeDto: {
+      code: string;
+    };
+    AuthUserDto: {
+      /** Format: uuid */
+      id: string;
+      /** Format: email */
+      email: string;
+      displayName: string;
+      roles: ('TALENT' | 'CLIENT' | 'ADMIN')[];
+      /** @enum {string} */
+      locale: 'en' | 'ko' | 'ru';
+      emailVerified: boolean;
+      /** @description False for Google-only accounts: they set a password via a reset email */
+      hasPassword: boolean;
+      /** @description Documents to accept at their current version before using the account */
+      pendingConsents: ('TERMS' | 'PRIVACY' | 'VISA_DISCLAIMER')[];
+    };
+    UpdateMeDto: {
+      displayName?: string;
+      /** @enum {string} */
+      locale?: 'en' | 'ko' | 'ru';
+    };
+    ChangePasswordDto: {
+      currentPassword: string;
+      newPassword: string;
+      /** @description The caller's own refresh token: every other session is signed out, this one stays. Omit to sign out all. */
+      refreshToken?: string;
     };
     ConsentListDto: {
       items: {
@@ -853,6 +1134,311 @@ export interface operations {
         content: {
           'application/json': components['schemas']['AuthSessionDto'];
         };
+      };
+    };
+  };
+  AuthController_refresh: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RefreshDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AuthSessionDto'];
+        };
+      };
+    };
+  };
+  AuthController_logout: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LogoutDto'];
+      };
+    };
+    responses: {
+      /** @description Refresh token(s) revoked */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AuthController_requestVerification: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Mail sent, or the address was already verified */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AuthController_confirmVerification: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TokenDto'];
+      };
+    };
+    responses: {
+      /** @description Email verified */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AuthController_requestReset: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PasswordResetRequestDto'];
+      };
+    };
+    responses: {
+      /** @description Always, whether or not the address has an account */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AuthController_confirmReset: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PasswordResetConfirmDto'];
+      };
+    };
+    responses: {
+      /** @description Password changed; every refresh token revoked */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AuthController_googleStart: {
+    parameters: {
+      query: {
+        role?: 'TALENT' | 'CLIENT';
+        locale: 'en' | 'ko' | 'ru';
+        next?: string;
+        webNonce?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Redirect to Google */
+      302: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AuthController_googleCallback: {
+    parameters: {
+      query: {
+        state: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Redirect to the web app with ?code=, ?signup=, ?link= or ?error= */
+      302: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  AuthController_completeGoogle: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GoogleCompleteDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AuthSessionDto'];
+        };
+      };
+    };
+  };
+  AuthController_linkGoogle: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GoogleLinkDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AuthSessionDto'];
+        };
+      };
+    };
+  };
+  AuthController_exchange: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ExchangeDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AuthSessionDto'];
+        };
+      };
+    };
+  };
+  MeController_me: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AuthUserDto'];
+        };
+      };
+    };
+  };
+  MeController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UpdateMeDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AuthUserDto'];
+        };
+      };
+    };
+  };
+  MeController_changePassword: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ChangePasswordDto'];
+      };
+    };
+    responses: {
+      /** @description Password changed */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };

@@ -1,0 +1,10 @@
+# GitGuardian configuration (ggshield and the GitHub integration read this file).
+# Only the three credential fixtures are ignored, never test files in general: tests import their fake
+# passwords and secrets from these files and do not write them inline (apps/api/CLAUDE.md, docs/pitfalls.md),
+# so a real secret pasted into any other test is still reported.
+version: 2
+secret:
+  ignored-paths:
+    - apps/api/test/fixtures/credentials.ts
+    - apps/web/test/fixtures/credentials.ts
+    - packages/shared/test/fixtures/credentials.ts

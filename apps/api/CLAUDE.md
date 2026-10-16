@@ -51,3 +51,7 @@ filters, guards, request-id).
   gets one e2e request without a token; every private route one 401 assertion.
 - Scripts that boot the app without listening (`src/openapi/generate.ts`) pass `abortOnError: false`
   and set env defaults in a side-effect import that comes before `AppModule`.
+- Tests never inline passwords, keys or secrets. They import them from `test/fixtures/credentials.ts`
+  (`TEST_PASSWORD`, `TEST_JWT_SECRET`, …); a new fake credential is added there first. The three fixture files
+  (api, web, shared; packages cannot import each other's tests) are the only paths GitGuardian ignores
+  (`.gitguardian.yaml`), so a literal password in a spec is reported.

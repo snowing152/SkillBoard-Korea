@@ -15,6 +15,7 @@ env:
   DATABASE_URL: postgresql://skillboard:skillboard@localhost:5432/skillboard
   # CI-only secret: signs tokens for the e2e runs, never used anywhere else.
   JWT_ACCESS_SECRET: ci-only-secret-for-e2e-runs-0123456789abcdef
+  JWT_REFRESH_PEPPER: ci-only-refresh-pepper-for-e2e-runs-0123456789
 
 jobs:
   check:

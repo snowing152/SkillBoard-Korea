@@ -1,0 +1,23 @@
+{
+  "title": "My account",
+  "displayName": "Display name",
+  "language": "Language",
+  "save": "Save",
+  "saved": "Saved.",
+  "email": {
+    "title": "Email",
+    "verified": "Verified",
+    "unverified": "Not verified yet"
+  },
+  "password": {
+    "title": "Password",
+    "current": "Current password",
+    "new": "New password",
+    "change": "Change password",
+    "changed": "Password changed.",
+    "wrong": "The current password is wrong.",
+    "googleOnly": "You signed in with Google, so this account has no password yet. Set one if you also want to sign in with your email.",
+    "sendSetLink": "Email me a link to set a password",
+    "linkSent": "We sent a link to your email."
+  }
+}

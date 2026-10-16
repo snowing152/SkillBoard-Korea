@@ -1,13 +1,15 @@
 import { randomUUID } from 'node:crypto';
+import { SEED_PASSWORD } from '../test/fixtures/credentials';
 import { expect, test } from '@playwright/test';
+import { outdateConsent } from './db';
 
 // Spec: docs/specs/legal.md, criteria 1, 4, 5 and 7. Runs in both viewports (ADR 0010).
 // Each test registers its own user through the API: both viewport projects run against one database,
 // so a shared seeded user would already have accepted by the time the second project signs in.
-// A stale version (an older row) is covered by the API unit and e2e tests; here the user has accepted
-// TERMS and not PRIVACY, which is the same "one document pending" state for the UI.
+// Sign-up now records TERMS and PRIVACY (accounts spec), so the user's PRIVACY row is aged to a version
+// that is no longer current: the same "one document pending" state a new LEGAL_VERSIONS value causes.
 const API_URL = process.env.E2E_API_URL ?? 'http://localhost:3001';
-const PASSWORD = 'Password123!';
+const PASSWORD = SEED_PASSWORD;
 
 test.describe('legal pages', () => {
   for (const [path, title] of [
@@ -40,15 +42,17 @@ test('a user with a pending document must accept it before using /me', async ({
 }) => {
   const email = `e2e-consent-${randomUUID().slice(0, 8)}@skillboard.local`;
   const res = await request.post(`${API_URL}/v1/auth/register`, {
-    data: { email, password: PASSWORD, displayName: 'E2E Consent', role: 'CLIENT' },
+    data: {
+      email,
+      password: PASSWORD,
+      displayName: 'E2E Consent',
+      role: 'CLIENT',
+      locale: 'en',
+      acceptTerms: true,
+    },
   });
   expect(res.status()).toBe(201);
-  const { accessToken } = (await res.json()) as { accessToken: string };
-  const termsOnly = await request.post(`${API_URL}/v1/me/consents`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-    data: { documents: ['TERMS'], locale: 'en' },
-  });
-  expect(termsOnly.status()).toBe(200);
+  await outdateConsent(email, 'PRIVACY');
 
   await page.goto('/sign-in');
   await page.getByLabel('Email').fill(email);
@@ -71,9 +75,13 @@ test('a user with a pending document must accept it before using /me', async ({
 
   await expect(page).toHaveURL(/\/me\/account$/);
   await expect(page.getByRole('heading', { level: 1, name: 'My account' })).toBeVisible();
-  await expect(page.getByRole('listitem').filter({ hasText: 'Privacy policy' })).toContainText(
-    '2026-10-14 · Language: en',
-  );
+  // The history keeps the outdated row and adds one at the current version (legal spec, criterion 5).
+  await expect(
+    page
+      .getByRole('listitem')
+      .filter({ hasText: 'Privacy policy' })
+      .filter({ hasText: '2026-10-14 · Language: en' }),
+  ).toHaveCount(1);
 });
 
 // Criterion 9: the visa sentence and its link are on the public profile, and nothing scrolls sideways

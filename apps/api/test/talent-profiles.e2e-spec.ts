@@ -15,11 +15,12 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/common/prisma/prisma.service.js';
+import { TEST_PASSWORD } from './fixtures/credentials.js';
 import { setupApp } from '../src/setup-app.js';
 
 // Fixed email, deleted before and after, so the test is repeatable without a seed reset.
 const EMAIL = 'e2e-talent@skillboard.local';
-const PASSWORD = 'Password123!';
+const PASSWORD = TEST_PASSWORD;
 
 const body = (skillId: string) => ({
   headline: 'E2E Russian tutor',
@@ -63,7 +64,13 @@ describe('talent profiles (e2e)', () => {
   it('registers a talent and returns a session', async () => {
     const res = await request(server)
       .post('/v1/auth/register')
-      .send({ email: EMAIL, password: PASSWORD, displayName: 'E2E Talent', role: 'TALENT' })
+      .send({
+        email: EMAIL,
+        password: PASSWORD,
+        displayName: 'E2E Talent',
+        role: 'TALENT',
+        acceptTerms: true,
+      })
       .expect(201);
     const session = AuthSessionSchema.parse(res.body);
     expect(session.user.email).toBe(EMAIL);
@@ -120,7 +127,7 @@ describe('talent profiles (e2e)', () => {
     expect(ErrorResponseSchema.parse(res.body).error.code).toBe('CONFLICT');
   });
 
-  it('hides a draft from the public, then shows it after publishing without contacts', async () => {
+  it('hides a draft, and a published profile until the email is verified, then shows it without contacts', async () => {
     await request(server).get(`/v1/talents/${slug}`).expect(404);
 
     const updated = await request(server)
@@ -129,6 +136,10 @@ describe('talent profiles (e2e)', () => {
       .send({ status: 'PUBLISHED' })
       .expect(200);
     expect(MyTalentProfileSchema.parse(updated.body).publishedAt).not.toBeNull();
+
+    // Published but the owner never verified the email: still invisible (accounts spec).
+    await request(server).get(`/v1/talents/${slug}`).expect(404);
+    await prisma.user.update({ where: { email: EMAIL }, data: { emailVerifiedAt: new Date() } });
 
     const res = await request(server).get(`/v1/talents/${slug}`).expect(200);
     const profile = TalentProfileSchema.parse(res.body);
