@@ -7,7 +7,11 @@ import { z } from 'zod';
  */
 export const EnvSchema = z
   .object({
-    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    /**
+     * Required, no default: the refusals below only bite when it says `production`, so a deploy that
+     * forgot it must fail at boot rather than run as development (console mailer, limiter off).
+     */
+    NODE_ENV: z.enum(['development', 'test', 'production']),
     PORT: z.coerce.number().int().min(1).max(65535).default(3001),
     DATABASE_URL: z.url(),
     /** Comma-separated browser origins allowed by CORS. */

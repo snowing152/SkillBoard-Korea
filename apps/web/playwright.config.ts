@@ -32,7 +32,8 @@ export default defineConfig({
       cwd: '../..',
       url: `${apiURL}/v1/health`,
       // Both viewports sign in many times from one IP and would trip the 10/min auth limit.
-      env: { RATE_LIMIT_DISABLED: 'true' },
+      // NODE_ENV is required by the API; `test` also keeps the limiter switch legal.
+      env: { NODE_ENV: 'test', RATE_LIMIT_DISABLED: 'true' },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },
