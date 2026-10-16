@@ -16,6 +16,8 @@ const TOKEN_TTL_MS: Record<TokenPurpose, number> = {
 };
 
 const USER_AGENT_MAX = 200;
+/** How far a logout follows a rotated token's successors before it falls back to revoking all. */
+const MAX_CHAIN_STEPS = 100;
 const OAUTH_SIGNUP_TTL_MS = 10 * 60 * 1000;
 
 /** A Google identity as the callback saw it, parked until the person has chosen a role. */
@@ -197,18 +199,33 @@ export class TokensService {
    * needs no other proof. Unknown tokens are ignored (the caller is signed out either way).
    */
   async revoke(presented: string): Promise<void> {
-    const tokenHash = this.hash(presented);
     const found = await this.prisma.refreshToken.findUnique({
-      where: { tokenHash },
+      where: { tokenHash: this.hash(presented) },
       select: { userId: true },
     });
     if (!found) return;
     await this.prisma.$transaction(async (tx) => {
       await this.lockUser(tx, found.userId);
-      await tx.refreshToken.updateMany({
-        where: { tokenHash, revokedAt: null },
-        data: { revokedAt: this.now() },
-      });
+      const now = this.now();
+      // The session is the whole chain: a rotated token is followed through its derived successors
+      // (ADR 0025), so a copy a thief moved on, or one whose response was lost, ends with it.
+      let token = presented;
+      for (let step = 0; step < MAX_CHAIN_STEPS; step += 1) {
+        const tokenHash = this.hash(token);
+        const row = await tx.refreshToken.findUnique({
+          where: { tokenHash },
+          select: { userId: true, rotatedAt: true },
+        });
+        if (row?.userId !== found.userId) return;
+        await tx.refreshToken.updateMany({
+          where: { tokenHash, revokedAt: null },
+          data: { revokedAt: now },
+        });
+        if (row.rotatedAt === null) return;
+        token = this.successorOf(token);
+      }
+      // Longer than any chain a browser can be behind: end every session rather than miss its head.
+      await this.revokeAll(found.userId, tx);
     });
   }
 

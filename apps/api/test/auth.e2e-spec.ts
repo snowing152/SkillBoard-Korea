@@ -472,6 +472,25 @@ describe('auth and accounts (e2e)', () => {
       .expect(404);
   });
 
+  it('logging out with an already rotated token also ends the tokens that replaced it', async () => {
+    // A thief who refreshed inside the grace window shares this chain and may have moved it on: signing
+    // out with the copy this browser still holds must end the whole chain, not only that old link.
+    const auth = app.get(AuthService);
+    const first = await auth.login({ email: EMAILS.main, password: NEW_PASSWORD });
+    const second = await auth.refresh(first.refreshToken);
+    const third = await auth.refresh(second.refreshToken);
+    await request(server)
+      .post('/v1/auth/logout')
+      .send({ refreshToken: first.refreshToken })
+      .expect(204);
+    await expect(auth.refresh(third.refreshToken)).rejects.toMatchObject({
+      code: 'UNAUTHENTICATED',
+    });
+    // Other sessions of the user are untouched.
+    const other = await auth.login({ email: EMAILS.main, password: NEW_PASSWORD });
+    await auth.refresh(other.refreshToken);
+  });
+
   it('links Google to an existing account only after the confirmation POST', async () => {
     const auth = app.get(AuthService);
     const before = await auth.register({

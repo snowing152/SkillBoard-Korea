@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { TEST_TOKEN_PEPPER } from '../../../test/fixtures/credentials.js';
 import { firstCallArg } from '../../../test/helpers.js';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
@@ -19,6 +19,9 @@ const env: Record<string, unknown> = {
 
 const secondsAgo = (s: number) => new Date(NOW.getTime() - s * 1000);
 const secondsAhead = (s: number) => new Date(NOW.getTime() + s * 1000);
+/** The derived successor of ADR 0025, recomputed here so the test does not trust the code under test. */
+const successor = (token: string) =>
+  createHmac('sha256', PEPPER).update(`refresh-successor:${token}`).digest('base64url');
 const sha = (token: string) =>
   createHash('sha256')
     .update(token + PEPPER)
@@ -215,13 +218,28 @@ describe('TokensService', () => {
     });
 
     it('logout of one token revokes that row only, under its owner’s lock', async () => {
-      prisma.refreshToken.findUnique.mockResolvedValue({ userId: USER_ID });
+      prisma.refreshToken.findUnique.mockResolvedValue({ userId: USER_ID, rotatedAt: null });
       await service.revoke('presented-token');
       expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+      expect(prisma.refreshToken.updateMany).toHaveBeenCalledTimes(1);
       expect(firstCallArg(prisma.refreshToken.updateMany)).toEqual({
         where: { tokenHash: sha('presented-token'), revokedAt: null },
         data: { revokedAt: NOW },
       });
+    });
+
+    it('logout of a rotated token follows its successors to the head of the chain', async () => {
+      const next = successor('presented-token');
+      prisma.refreshToken.findUnique
+        .mockResolvedValueOnce({ userId: USER_ID })
+        .mockResolvedValueOnce({ userId: USER_ID, rotatedAt: secondsAgo(60) })
+        .mockResolvedValueOnce({ userId: USER_ID, rotatedAt: null });
+      await service.revoke('presented-token');
+      const calls = prisma.refreshToken.updateMany.mock.calls as [
+        { where: { tokenHash: string } },
+      ][];
+      const revoked = calls.map(([arg]) => arg.where.tokenHash);
+      expect(revoked).toEqual([sha('presented-token'), sha(next)]);
     });
 
     it('logout of an unknown token touches nothing', async () => {

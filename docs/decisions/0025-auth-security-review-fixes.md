@@ -18,7 +18,9 @@ the address first (pre-hijack) kept access after the real owner verified it and 
   Only its `sha256(token + pepper)` is stored, as before. A repeat inside `REFRESH_GRACE_SECONDS` returns
   that same successor (looked up by its hash) instead of minting another; if it was revoked or expired
   meanwhile, plain `UNAUTHENTICATED`. Everything else in the 0024 `/refresh` bullet stands: unknown,
-  revoked or expired → plain 401; rotated longer ago than the grace → revoke all.
+  revoked or expired → plain 401; rotated longer ago than the grace → revoke all. Logging out with a rotated
+  token follows its successors and revokes the whole chain (at most 100 steps, else every session of
+  the user), so a copy a thief moved on does not outlive the sign-out.
 - **Linking a Google identity to an existing account** clears that account's `passwordHash` and revokes
   all its refresh tokens in the same transaction as the link; the owner sets a password through the reset
   mail. Because that is destructive, the callback (a GET flow that a link on any site can start) never
