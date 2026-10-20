@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { ZodSerializerInterceptor, ZodValidationPipe } from 'nestjs-zod';
 import { JwtAuthGuard } from './common/auth/jwt-auth.guard.js';
 import { RolesGuard } from './common/auth/roles.guard.js';
-import { validateEnv } from './common/config/env.js';
+import { type Env, validateEnv } from './common/config/env.js';
+import { MailModule } from './common/mail/mail.module.js';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import { PrismaModule } from './common/prisma/prisma.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
@@ -18,8 +19,16 @@ import { TalentProfilesModule } from './modules/talent-profiles/talent-profiles.
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     // Global limit: 100 requests / minute / IP (ADR 0018). Stricter limits go on the specific routes.
-    ThrottlerModule.forRoot({ throttlers: [{ ttl: 60_000, limit: 100 }] }),
+    // `RATE_LIMIT_DISABLED` exists only for the browser e2e run and is refused in production.
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<Env, true>) => ({
+        throttlers: [{ ttl: 60_000, limit: 100 }],
+        skipIf: () => config.get('RATE_LIMIT_DISABLED', { infer: true }),
+      }),
+    }),
     PrismaModule,
+    MailModule,
     HealthModule,
     AuthModule,
     ConsentsModule,

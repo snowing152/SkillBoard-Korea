@@ -1,6 +1,6 @@
 # Accounts and auth: sign-up, Google, email verification, refresh, password reset, settings
 
-Status: Ready · Model: Sonnet (Opus reviews the token rotation and the Google callback) · ADRs: 0009,
+Status: Implemented (hardened by ADR 0024) · Model: Sonnet (Opus reviews the token rotation and the Google callback) · ADRs: 0009,
 0013, 0017, 0018, 0019, 0020 · Branch: `feat/accounts` · Order: 2 of 6 · Depends on `legal`
 (`ConsentsService`, `LEGAL_VERSIONS`).
 
@@ -29,22 +29,24 @@ about auth are closed, and nothing in the browser ever holds a token.
 All routes are in `modules/auth/` unless noted, `@Public()` unless marked `user`, throttled 10/min per IP
 (existing controller decorator). Stricter per-route limits in the last column.
 
-| Method and route                       | Auth   | Request schema               | Response schema                         | Errors and limits                                                                                                          |
-| -------------------------------------- | ------ | ---------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `POST /v1/auth/register`               | public | `RegisterSchema` (extended)  | `AuthSessionSchema` (extended)          | `VALIDATION_FAILED`, `CONFLICT`; sends the verification email                                                              |
-| `POST /v1/auth/login`                  | public | `LoginSchema`                | `AuthSessionSchema`                     | `UNAUTHENTICATED` (one message for all causes)                                                                             |
-| `POST /v1/auth/refresh`                | public | `RefreshSchema`              | `AuthSessionSchema`                     | `UNAUTHENTICATED` (expired, unknown or reused → all tokens of that user revoked, ADR 0020)                                 |
-| `POST /v1/auth/logout`                 | user   | `LogoutSchema`               | 204                                     | revokes the given token, or all of the user's tokens with `all: true` (mobile refreshes first if its access token expired) |
-| `POST /v1/auth/verify-email/request`   | user   | –                            | 204                                     | 3 per 15 min per IP; 204 even if already verified                                                                          |
-| `POST /v1/auth/verify-email/confirm`   | public | `TokenSchema`                | 204                                     | `NOT_FOUND` (unknown, used or expired token)                                                                               |
-| `POST /v1/auth/password-reset/request` | public | `PasswordResetRequestSchema` | 204                                     | 3 per 15 min per IP; always 204 (no account enumeration)                                                                   |
-| `POST /v1/auth/password-reset/confirm` | public | `PasswordResetConfirmSchema` | 204                                     | `NOT_FOUND` (bad token); revokes all refresh tokens                                                                        |
-| `GET /v1/auth/google`                  | public | `GoogleStartQuerySchema`     | 302 to Google                           | `NOT_FOUND` when Google env is unset                                                                                       |
-| `GET /v1/auth/google/callback`         | public | Passport                     | 302 to `WEB_URL/<locale>/auth/callback` | on failure redirects with `?error=<OAUTH_CALLBACK_ERRORS>` instead of `?code=`                                             |
-| `POST /v1/auth/exchange`               | public | `ExchangeSchema`             | `AuthSessionSchema`                     | `NOT_FOUND` (code unknown, used or older than 60 s)                                                                        |
-| `GET /v1/me`                           | user   | –                            | `AuthUserSchema`                        | `UNAUTHENTICATED`                                                                                                          |
-| `PATCH /v1/me`                         | user   | `UpdateMeSchema`             | `AuthUserSchema`                        | `VALIDATION_FAILED`                                                                                                        |
-| `POST /v1/me/password`                 | user   | `ChangePasswordSchema`       | 204                                     | `FORBIDDEN` (wrong current password, or Google-only account: `details[0].code` says which)                                 |
+| Method and route                       | Auth   | Request schema               | Response schema                         | Errors and limits                                                                                                                                                                                           |
+| -------------------------------------- | ------ | ---------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /v1/auth/register`               | public | `RegisterSchema` (extended)  | `AuthSessionSchema` (extended)          | `VALIDATION_FAILED`, `CONFLICT`; sends the verification email                                                                                                                                               |
+| `POST /v1/auth/login`                  | public | `LoginSchema`                | `AuthSessionSchema`                     | `UNAUTHENTICATED` (one message for all causes)                                                                                                                                                              |
+| `POST /v1/auth/refresh`                | public | `RefreshSchema`              | `AuthSessionSchema`                     | `UNAUTHENTICATED` (expired, revoked or unknown → plain 401; a rotated token presented after the grace window → all tokens of that user revoked, ADR 0020/0024)                                              |
+| `POST /v1/auth/logout`                 | public | `LogoutSchema`               | 204                                     | revokes the given refresh token and, if it was rotated, its successors (no access token needed: it is its own credential, ADR 0025); `all: true` needs the access token and revokes every token of the user |
+| `POST /v1/auth/verify-email/request`   | user   | –                            | 204                                     | 3 per 15 min per IP; 204 even if already verified                                                                                                                                                           |
+| `POST /v1/auth/verify-email/confirm`   | public | `TokenSchema`                | 204                                     | `NOT_FOUND` (unknown, used or expired token)                                                                                                                                                                |
+| `POST /v1/auth/password-reset/request` | public | `PasswordResetRequestSchema` | 204                                     | 3 per 15 min per IP; always 204 (no account enumeration)                                                                                                                                                    |
+| `POST /v1/auth/password-reset/confirm` | public | `PasswordResetConfirmSchema` | 204                                     | `NOT_FOUND` (bad token); revokes all refresh tokens                                                                                                                                                         |
+| `GET /v1/auth/google`                  | public | `GoogleStartQuerySchema`     | 302 to Google                           | `NOT_FOUND` when Google env is unset                                                                                                                                                                        |
+| `GET /v1/auth/google/callback`         | public | Passport                     | 302 to `WEB_URL/<locale>/auth/callback` | on failure redirects with `?error=<OAUTH_CALLBACK_ERRORS>` instead of `?code=`                                                                                                                              |
+| `POST /v1/auth/google/link`            | public | `GoogleLinkSchema`           | `AuthSessionSchema`                     | `NOT_FOUND` (bad or expired link token, or the account is gone or unverified), `CONFLICT` (identity already linked); ADR 0025                                                                               |
+| `POST /v1/auth/google/complete`        | public | `GoogleCompleteSchema`       | `AuthSessionSchema`                     | `NOT_FOUND` (bad or expired signup token), `CONFLICT` (account exists); role step of ADR 0024                                                                                                               |
+| `POST /v1/auth/exchange`               | public | `ExchangeSchema`             | `AuthSessionSchema`                     | `NOT_FOUND` (code unknown, used or older than 60 s)                                                                                                                                                         |
+| `GET /v1/me`                           | user   | –                            | `AuthUserSchema`                        | `UNAUTHENTICATED`                                                                                                                                                                                           |
+| `PATCH /v1/me`                         | user   | `UpdateMeSchema`             | `AuthUserSchema`                        | `VALIDATION_FAILED`                                                                                                                                                                                         |
+| `POST /v1/me/password`                 | user   | `ChangePasswordSchema`       | 204                                     | `FORBIDDEN` (wrong current password, or Google-only account: `details[0].code` says which); revokes every other session (`refreshToken` in the body names the one to keep, ADR 0024)                        |
 
 Schemas in `packages/shared/src/auth/` (extend `auth.schema.ts`; move tokens to `tokens.schema.ts`):
 
@@ -88,12 +90,23 @@ passes 300 lines):
   validates the query, signs it into a `state` JWT (payload `{ purpose: 'oauth_state', role, locale,
 next, nonce }`, 10 min, `JWT_ACCESS_SECRET`; the access guard rejects it because `sub` is missing) and
   redirects. The callback verifies `state`, then: existing `AuthIdentity` → that user; else a user with the
-  same lower-cased email and `emailVerifiedAt` set → link identity (ADR 0009); same email but unverified
-  → redirect with `error=EMAIL_NOT_VERIFIED` (prevents takeover); else create the user with the state's
-  role, `emailVerifiedAt = now()` when Google says `email_verified`, `passwordHash = null`, and record the
-  sign-up consents. Then create an `OAUTH_EXCHANGE` token and redirect to
-  `${WEB_URL}/${locale}/auth/callback?code=…&next=…`. Nothing secret is ever in a URL except that
-  single-use 60 s code.
+  same lower-cased email and `emailVerifiedAt` set → nothing changes yet: the identity is parked
+  (`OAuthSignup`, intent `LINK`) and the callback redirects with an opaque `link=…` token; the web keeps it
+  in an `HttpOnly` cookie and `/sign-in/google/link` asks "Link Google? Your password will be removed and
+  other sessions signed out". Only its POST (`POST /v1/auth/google/link`) links the identity and, in the
+  same transaction, clears `passwordHash` and revokes all sessions (pre-hijack: whoever registered the
+  address first loses access; the owner sets a password by reset), then signs this device in (ADR 0025);
+  same email but unverified
+  → redirect with `error=EMAIL_NOT_VERIFIED` (prevents takeover); Google does not say `email_verified` →
+  `error=OAUTH_FAILED`, nothing created or parked (no squatting). For an existing user, create an
+  `OAUTH_EXCHANGE` token and redirect to `${WEB_URL}/${locale}/auth/callback?code=…&next=…`. Amended by
+  ADR 0024: the start route also sets an `HttpOnly` nonce cookie that the callback must match with the
+  `state` nonce (login CSRF). Amended by ADR 0025: nobody exists yet → nothing is created, whatever the
+  start query says (a link carries no consent): the callback redirects with an opaque single-use
+  `signup=…` token instead of `code` (the identity is parked in `OAuthSignup`) plus `role` when the start
+  query had one; the web keeps the token in an `HttpOnly` cookie, and `/sign-up/google` (role preselected)
+  asks for role and consent before `POST /v1/auth/google/complete` creates the user (`emailVerifiedAt =
+now()`, `passwordHash = null`, sign-up consents).
 - `login` of an unverified user succeeds (they must be able to reach "resend"); gated actions check
   `emailVerifiedAt` themselves (`contact-reveal`, `moderation`). A profile can be created, edited and
   set to `PUBLISHED` without verification, but it is not publicly visible until the owner's email is
@@ -109,7 +122,7 @@ next, nonce }`, 10 min, `JWT_ACCESS_SECRET`; the access guard rejects it because
   `EMAIL_PROVIDER=console` when `NODE_ENV=production`, so rule 11 holds where it matters). Subjects and
   bodies for the two emails in `mail/templates.ts` as `Record<Locale, …>`; the user's `locale` picks one.
 - Env (`EnvSchema` + `.env.example`): `JWT_REFRESH_PEPPER` (min 32), `REFRESH_TTL_DAYS` (1–90, default
-  30), `REFRESH_GRACE_SECONDS` (0–120, default 30, ADR 0020), `EMAIL_PROVIDER` (`console` | `resend`, default `console`), `RESEND_API_KEY` (required when
+  30), `REFRESH_GRACE_SECONDS` (0–120, default 120, ADR 0020/0025), `EMAIL_PROVIDER` (`console` | `resend`, default `console`), `RESEND_API_KEY` (required when
   `resend`), `EMAIL_FROM` (default `SkillBoard Korea <noreply@localhost>`), `GOOGLE_CLIENT_ID`,
   `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL` (all three optional; Google routes answer `NOT_FOUND`
   while any is missing). Web: `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` (`'true'` | `'false'`, default `'false'`)
@@ -126,17 +139,18 @@ for e2e). Deletion: `RefreshToken`, `VerificationToken`, `AuthIdentity` already 
 
 New namespace `account`; `auth` grows. Server Actions in `src/actions/auth.ts` and `src/actions/account.ts`.
 
-| Route                | Kind                                                         | States                                                                                                                                                                                                                                                                                      |
-| -------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/sign-up`           | Server page + Client form `components/auth/sign-up-form.tsx` | role choice (two radio cards: "I offer my skills" / "I am looking for someone"), consent checkbox with links to `/legal/*`, Google button (if enabled), submitting, `CONFLICT` → `auth.errors.emailTaken`, success → `/verify-email/sent`                                                   |
-| `/sign-in`           | existing form + "Continue with Google" + "Forgot password?"  | `?next=` (validated with `SafePathSchema`) is honoured after success; default `/me/talent-profile` for TALENT, `/talents` for CLIENT                                                                                                                                                        |
-| `/verify-email/sent` | Server page                                                  | explanation, "Resend" button (action → `verify-email/request`; disabled 60 s after click; `RATE_LIMITED` message)                                                                                                                                                                           |
-| `/verify-email`      | Server page reads `?token`, Client confirm component         | confirming, success (link to sign-in or `/me/talent-profile` when a session exists), `NOT_FOUND` → "link expired, request a new one"                                                                                                                                                        |
-| `/forgot-password`   | Server page + Client form                                    | submitting, always the same success text ("If an account exists, we sent a link")                                                                                                                                                                                                           |
-| `/reset-password`    | Server page reads `?token` + Client form                     | new password twice (client-side equality `refine`), success → `/sign-in`, `NOT_FOUND` → expired                                                                                                                                                                                             |
-| `/auth/callback`     | Route Handler `route.ts`                                     | reads `code` (+ `next`), calls `POST /v1/auth/exchange`, sets both cookies, redirects; `?error=` → `/sign-in?error=<CODE>` which shows `auth.errors.<CODE>`                                                                                                                                 |
-| `/me/account`        | Server page, session required; Client forms per section      | sections: profile (display name, language), email (verified badge or "Resend verification"), password (change, or "set a password" via reset email for Google-only users), consents (`legal`), danger zone (`account-deletion`)                                                             |
-| `/me/*` layout       | `app/[locale]/(main)/me/layout.tsx`                          | loads `GET /v1/me`; `pendingConsents` not empty → redirect to `/consent?next=`; unverified → `VerifyEmailBanner` with resend action on every `/me/*` page; on `/me/talent-profile` the banner reads "Verify your email to go live" (`auth.verify.goLive`) when a `PUBLISHED` profile exists |
+| Route                  | Kind                                                                                                 | States                                                                                                                                                                                                                                                                                                     |
+| ---------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/sign-up`             | Server page + Client form `components/auth/sign-up-form.tsx`                                         | role choice (two radio cards: "I offer my skills" / "I am looking for someone"), consent checkbox with links to `/legal/*`, Google button (if enabled; passes only the role, the consent is given on `/sign-up/google`), submitting, `CONFLICT` → `auth.errors.emailTaken`, success → `/verify-email/sent` |
+| `/sign-in/google/link` | Server page (needs the link cookie, else `/sign-in`) + Client `components/auth/google-link-form.tsx` | warning that the password is removed and other sessions end, "Link Google" (POST) and "Cancel"; `NOT_FOUND` → `googleLink.expired`, `CONFLICT` → `googleLink.alreadyLinked`                                                                                                                                |
+| `/sign-in`             | existing form + "Continue with Google" + "Forgot password?"                                          | `?next=` (validated with `SafePathSchema`) is honoured after success; default `/me/talent-profile` for TALENT, `/talents` for CLIENT                                                                                                                                                                       |
+| `/verify-email/sent`   | Server page                                                                                          | explanation, "Resend" button (action → `verify-email/request`; disabled 60 s after click; `RATE_LIMITED` message)                                                                                                                                                                                          |
+| `/verify-email`        | Server page reads `?token`, Client confirm component                                                 | confirming, success (link to sign-in or `/me/talent-profile` when a session exists), `NOT_FOUND` → "link expired, request a new one"                                                                                                                                                                       |
+| `/forgot-password`     | Server page + Client form                                                                            | submitting, always the same success text ("If an account exists, we sent a link")                                                                                                                                                                                                                          |
+| `/reset-password`      | Server page reads `?token` + Client form                                                             | new password twice (client-side equality `refine`), success → `/sign-in`, `NOT_FOUND` → expired                                                                                                                                                                                                            |
+| `/auth/callback`       | Route Handler `route.ts`                                                                             | reads `code` (+ `next`), calls `POST /v1/auth/exchange`, sets both cookies, redirects; `?error=` → `/sign-in?error=<CODE>` which shows `auth.errors.<CODE>`                                                                                                                                                |
+| `/me/account`          | Server page, session required; Client forms per section                                              | sections: profile (display name, language), email (verified badge or "Resend verification"), password (change, or "set a password" via reset email for Google-only users), consents (`legal`), danger zone (`account-deletion`)                                                                            |
+| `/me/*` layout         | `app/[locale]/(main)/me/layout.tsx`                                                                  | loads `GET /v1/me`; `pendingConsents` not empty → redirect to `/consent?next=`; unverified → `VerifyEmailBanner` with resend action on every `/me/*` page; on `/me/talent-profile` the banner reads "Verify your email to go live" (`auth.verify.goLive`) when a `PUBLISHED` profile exists                |
 
 - Session (`src/lib/session.ts`): `setSession(session: AuthSession)` sets `skillboard_session` (max-age
   `expiresInSeconds`) and `skillboard_refresh` (max-age until `refreshExpiresAt`); `clearSession` clears
@@ -189,8 +203,9 @@ New namespace `account`; `auth` grows. Server Actions in `src/actions/auth.ts` a
 7. Given a valid reset token and a new password, then login works with the new password, fails with the
    old one, and all refresh tokens of the user are revoked.
 8. Given Google env is set and a state with `role=CLIENT`, when a new Google user completes the callback,
-   then a user with `roles=['CLIENT']`, a linked `AuthIdentity`, `emailVerifiedAt` set and both consents
-   exists, the browser receives only a `code`, and `/auth/callback` ends signed in on `/talents`.
+   then no user exists yet, the browser receives a `signup` token and `role=CLIENT`, and `/sign-up/google`
+   shows CLIENT preselected with the consent box unticked; after ticking it and submitting, a user with
+   `roles=['CLIENT']`, a linked `AuthIdentity`, `emailVerifiedAt` set and both consents exists (ADR 0025).
    (Service unit test with a fake profile; the redirect dance itself is tested manually.)
 9. Given an existing unverified email/password account, when a Google sign-in with the same email happens,
    then no identity is linked and the web shows `auth.errors.EMAIL_NOT_VERIFIED`.

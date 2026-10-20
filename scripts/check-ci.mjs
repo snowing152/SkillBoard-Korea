@@ -13,6 +13,7 @@ const env = {
   DOTENV_CONFIG_PATH: '/dev/null', // dotenv/config must not load the local API env file
   DATABASE_URL: 'postgresql://skillboard:skillboard@localhost:5432/skillboard',
   JWT_ACCESS_SECRET: 'ci-only-secret-for-e2e-runs-0123456789abcdef',
+  JWT_REFRESH_PEPPER: 'ci-only-refresh-pepper-for-e2e-runs-0123456789',
 };
 
 const steps = [

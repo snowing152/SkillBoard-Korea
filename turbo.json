@@ -14,14 +14,14 @@
       "dependsOn": ["build"],
       "cache": false,
       "env": ["DATABASE_URL"],
-      "passThroughEnv": ["JWT_ACCESS_SECRET"]
+      "passThroughEnv": ["JWT_ACCESS_SECRET", "JWT_REFRESH_PEPPER"]
     },
     "dev": {
       "dependsOn": ["^build"],
       "cache": false,
       "persistent": true,
       "env": ["DATABASE_URL"],
-      "passThroughEnv": ["JWT_ACCESS_SECRET"]
+      "passThroughEnv": ["JWT_ACCESS_SECRET", "JWT_REFRESH_PEPPER"]
     }
   }
 }

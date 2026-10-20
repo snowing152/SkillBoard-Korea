@@ -11,6 +11,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { Link } from '@/i18n/navigation';
 import { api } from '@/lib/api';
 import { toActionFailure } from '@/lib/api-errors';
+import { getAccessToken } from '@/lib/session';
 import { cn } from '@/lib/utils';
 
 type Props = { params: Promise<{ slug: string }> };
@@ -40,10 +41,11 @@ export default async function PublicProfilePage({ params }: Props) {
   const { slug } = await params;
   const profile = await loadProfile(slug);
   const t = await getTranslations('profile.view');
+  const signedIn = (await getAccessToken()) !== null;
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <SiteHeader className="hidden sm:block" />
+      <SiteHeader className="hidden sm:block" signedIn={signedIn} />
       <main className="mx-auto w-full max-w-content flex-1 pb-8 sm:px-gutter sm:pt-6">
         <TalentProfileView profile={profile} coverHeader={<ProfileCoverHeader />} />
       </main>

@@ -26,6 +26,7 @@ enum AuthProvider {
 enum TokenPurpose {
   EMAIL_VERIFY
   PASSWORD_RESET
+  OAUTH_EXCHANGE
 }
 
 enum ConsentType {
@@ -117,7 +118,8 @@ model RefreshToken {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userAgent String?
   expiresAt DateTime
-  revokedAt DateTime?
+  rotatedAt DateTime? // set when /refresh exchanged it for the next token; presenting it again is replay
+  revokedAt DateTime? // set on purpose (logout, password change or reset, theft response); plain 401
   createdAt DateTime  @default(now())
 
   @@index([userId])
@@ -132,6 +134,32 @@ model VerificationToken {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime     @default(now())
+}
+
+// What a parked Google identity waits for: a role choice (new account) or the owner's confirmation to
+// link it to the existing account with the same email (ADR 0025).
+enum OAuthParkIntent {
+  SIGNUP
+  LINK
+}
+
+// A Google identity waiting for its owner to choose a role (accounts spec, ADR 0024) or to confirm a link
+// (ADR 0025). Holds personal data for at most 10 minutes: deleted when used, and expired rows are swept
+// on every insert.
+model OAuthSignup {
+  id             String          @id @default(uuid(7)) @db.Uuid
+  tokenHash      String          @unique
+  intent         OAuthParkIntent @default(SIGNUP)
+  provider       AuthProvider
+  providerUserId String
+  email          String
+  emailVerified  Boolean
+  displayName    String?
+  locale         String       @default("en")
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+
+  @@index([expiresAt])
 }
 
 model Consent {

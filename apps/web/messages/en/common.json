@@ -15,7 +15,8 @@
     "myProfile": "My profile",
     "myAccount": "My account",
     "label": "Main",
-    "back": "Back to talent list"
+    "back": "Back to talent list",
+    "signUp": "Sign up"
   },
   "loading": "Loading…",
   "errors": {
@@ -46,7 +47,9 @@
     "home": "Home",
     "talents": "Browse",
     "profile": "Profile",
-    "account": "Account"
+    "account": "Account",
+    "signIn": "Sign in",
+    "signUp": "Sign up"
   },
   "wakingUp": "The server is waking up after a pause. The first load can take up to a minute."
 }

@@ -19,6 +19,19 @@ describe('toActionFailure', () => {
     });
   });
 
+  it('derives a known reason from details[0].code and ignores unknown ones', () => {
+    const body = (code: string) => ({
+      error: {
+        code: 'FORBIDDEN',
+        message: 'No password is set',
+        details: [{ path: [], message: 'No password is set', code }],
+      },
+      requestId: 'req-2',
+    });
+    expect(toActionFailure(body('NO_PASSWORD_SET')).reason).toBe('NO_PASSWORD_SET');
+    expect(toActionFailure(body('invalid_type')).reason).toBeUndefined();
+  });
+
   it('falls back to INTERNAL for anything else (network failure, HTML error page)', () => {
     expect(toActionFailure(undefined)).toEqual({ ok: false, code: 'INTERNAL' });
     expect(toActionFailure('<html>502</html>')).toEqual({ ok: false, code: 'INTERNAL' });

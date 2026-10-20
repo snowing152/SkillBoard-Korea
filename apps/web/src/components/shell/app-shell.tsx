@@ -8,13 +8,19 @@ import { SiteHeader } from '@/components/shell/site-header';
  * `not-found`/`error`, which render outside it. The bottom padding keeps the footer above the fixed
  * bottom bar. The public profile does not use it: its header lives in the media cover.
  */
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  signedIn,
+}: {
+  children: ReactNode;
+  signedIn?: boolean | undefined;
+}) {
   return (
     <div className="flex min-h-dvh flex-col pb-[calc(var(--spacing-bottom-nav)+env(safe-area-inset-bottom))] sm:pb-0">
-      <SiteHeader />
+      <SiteHeader signedIn={signedIn} />
       <div className="flex flex-1 flex-col">{children}</div>
       <SiteFooter />
-      <BottomNav />
+      <BottomNav signedIn={signedIn} />
     </div>
   );
 }
