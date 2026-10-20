@@ -12,7 +12,7 @@ Shared rules for every coding agent (project, commands, golden rules, layout, wo
   `session-start` prints branch, active spec and uncommitted files.
 - **Path rules** in `.claude/rules/*.md` load only when you touch matching files (Prisma, messages,
   tests, docs, tooling, `.claude`).
-- **Skills**: `/spec <slug>`, `/implement <slug>`, `/new-module <name>`, `/add-language <locale>`, `/review`.
+- **Skills**: `/spec <slug>`, `/implement <slug>`, `/new-module <name>`, `/add-language <locale>`, `/review`, `/update-status`.
   Pass the bare slug (`/implement legal`); a full path (`docs/specs/legal.md`) is also accepted and
   normalised to the slug.
 - **CI parity**: after any change to `turbo.json`, `package.json`, workflows or env handling, run

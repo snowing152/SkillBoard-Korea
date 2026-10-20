@@ -41,6 +41,8 @@ student: explain _why_ in docs and comments.
     shared imports only `zod` (no Node, DOM, React).
 11. Minimal personal data (PIPA, ADR 0018). Logs never contain emails, tokens or request bodies.
 12. Docs stay short. Every doc is read by agents on every related task; a long doc costs tokens forever.
+13. Every PR updates `docs/status.md` in the same PR (Done, In progress, Next, Key decisions; skill
+    `/update-status`). Keep it under 150 lines; move details to the right doc instead of growing it.
 
 ## Never (hooks block these)
 
