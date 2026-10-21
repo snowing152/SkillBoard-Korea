@@ -22,3 +22,5 @@ paths:
   so other coding agents can read them.
 - Permissions: allow only commands that are safe to repeat; deny secrets and deploys; destructive edits
   are the hooks' job (they give better messages).
+- Never put `*` where an option value goes (`pnpm --filter * test`): `*` also matches spaces, so it
+  allows any extra flags or `exec <cmd>`. List exact values, one rule per package; `*` only at the end.
