@@ -1,7 +1,7 @@
 # Project status
 
 Current snapshot for humans and agents. Updated in every PR (`AGENTS.md`, skill `/update-status`).
-Keep it under 150 lines; details live in the doc each line points to. Last updated: 2026-10-20.
+Keep it under 150 lines; details live in the doc each line points to. Last updated: 2026-10-21.
 
 ## Product
 
@@ -47,11 +47,13 @@ Keep it under 150 lines; details live in the doc each line points to. Last updat
 - #5 chore: ignore design reference exports.
 - #6 feat(web): M4 design system foundation and restyled pages (ADR 0023).
 - #7 feat: accounts, refresh tokens, Google sign-in (`accounts`, ADR 0024, 0025).
+- #8 docs: project status snapshot and `/update-status` skill.
+- #9 chore: exact package names in `pnpm --filter` permission rules (no `*` in option values).
 - Before the PRs (direct commits): Phases A-D, `talent-profiles` (the reference feature).
 
 ## In progress
 
-- Open PRs: none besides the one that adds this file. Extra branches: none.
+- Open PRs: #9 (`chore/exact-filter-permissions`) until merged. Extra branches: none.
 
 ## Next
 
